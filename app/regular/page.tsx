@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import { C, S } from "@/lib/design";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 interface User    { id: string; name: string; email: string }
@@ -12,28 +13,15 @@ interface Result  { bookingId: string; startAt: string; remainingAfter: number }
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 const jst = (iso: string, opts: Intl.DateTimeFormatOptions) =>
   new Date(iso).toLocaleString("ja-JP", { timeZone: "Asia/Tokyo", ...opts });
-
 const toDate = (iso: string) =>
   jst(iso, { year: "numeric", month: "long", day: "numeric", weekday: "short" });
-
-const toTime = (iso: string) =>
-  jst(iso, { hour: "2-digit", minute: "2-digit" });
-
+const toTime = (iso: string) => jst(iso, { hour: "2-digit", minute: "2-digit" });
 const toShortDate = (iso: string) =>
   jst(iso, { year: "numeric", month: "2-digit", day: "2-digit" });
+const minDate = () => { const d = new Date(); d.setDate(d.getDate() + 1); return d.toLocaleDateString("sv", { timeZone: "Asia/Tokyo" }); };
+const maxDate = () => { const d = new Date(); d.setDate(d.getDate() + 30); return d.toLocaleDateString("sv", { timeZone: "Asia/Tokyo" }); };
 
-const minDate = () => {
-  const d = new Date();
-  d.setDate(d.getDate() + 1);
-  return d.toLocaleDateString("sv", { timeZone: "Asia/Tokyo" });
-};
-const maxDate = () => {
-  const d = new Date();
-  d.setDate(d.getDate() + 30);
-  return d.toLocaleDateString("sv", { timeZone: "Asia/Tokyo" });
-};
-
-// ─── Main component ───────────────────────────────────────────────────────────
+// ─── Main ─────────────────────────────────────────────────────────────────────
 export default function RegularPage() {
   const router = useRouter();
 
@@ -42,22 +30,18 @@ export default function RegularPage() {
   const [tickets, setTickets]           = useState<Ticket[]>([]);
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
 
-  // view: "selecting" | "confirming" | "complete"
   const [view, setView] = useState<"selecting" | "confirming" | "complete">("selecting");
 
-  // Slot selection
-  const [selectedDate, setSelectedDate] = useState("");
-  const [slots, setSlots]               = useState<Slot[]>([]);
-  const [slotsLoading, setSlotsLoading] = useState(false);
+  const [selectedDate, setSelectedDate]   = useState("");
+  const [slots, setSlots]                 = useState<Slot[]>([]);
+  const [slotsLoading, setSlotsLoading]   = useState(false);
   const [selectedStart, setSelectedStart] = useState("");
   const [selectedEnd, setSelectedEnd]     = useState("");
 
-  // Booking
   const [submitting, setSubmitting]   = useState(false);
   const [submitError, setSubmitError] = useState("");
   const [result, setResult]           = useState<Result | null>(null);
 
-  // ── Auth check ──────────────────────────────────────────────────────────────
   useEffect(() => {
     fetch("/api/dev-auth")
       .then((r) => r.json())
@@ -69,7 +53,6 @@ export default function RegularPage() {
       .finally(() => setAuthLoading(false));
   }, [router]);
 
-  // ── Fetch tickets after user is set ────────────────────────────────────────
   const fetchTickets = useCallback(async () => {
     const res = await fetch("/api/tickets");
     if (!res.ok) return;
@@ -79,11 +62,8 @@ export default function RegularPage() {
     if (list.length > 0) setSelectedTicket(list[0]);
   }, []);
 
-  useEffect(() => {
-    if (user) fetchTickets();
-  }, [user, fetchTickets]);
+  useEffect(() => { if (user) fetchTickets(); }, [user, fetchTickets]);
 
-  // ── Fetch slots when date changes ───────────────────────────────────────────
   useEffect(() => {
     if (!selectedDate) return;
     setSlotsLoading(true);
@@ -91,18 +71,16 @@ export default function RegularPage() {
     setSelectedStart("");
     fetch(`/api/slots?date=${selectedDate}&kind=regular`)
       .then((r) => r.json())
-      .then((data) => setSlots(data.slots ?? []))
+      .then((d) => setSlots(d.slots ?? []))
       .catch(() => setSlots([]))
       .finally(() => setSlotsLoading(false));
   }, [selectedDate]);
 
-  // ── Logout ──────────────────────────────────────────────────────────────────
   async function logout() {
     await fetch("/api/dev-auth", { method: "DELETE" });
     router.push("/login");
   }
 
-  // ── Submit booking ──────────────────────────────────────────────────────────
   async function submitBooking() {
     if (!selectedTicket) return;
     setSubmitting(true);
@@ -124,7 +102,6 @@ export default function RegularPage() {
     }
   }
 
-  // ── Another booking ─────────────────────────────────────────────────────────
   function bookAnother() {
     setView("selecting");
     setSelectedDate("");
@@ -132,103 +109,105 @@ export default function RegularPage() {
     setSelectedStart("");
     setSelectedEnd("");
     setResult(null);
-    fetchTickets(); // re-fetch to get updated remaining count
+    fetchTickets();
   }
 
-  // ── Loading / unauthed ──────────────────────────────────────────────────────
-  if (authLoading) {
-    return <main style={mainS}><p style={{ color: "#aab0c7", marginTop: 80 }}>認証確認中...</p></main>;
-  }
+  if (authLoading) return <main style={S.page()}><p style={{ color: C.muted, marginTop: 60 }}>認証確認中...</p></main>;
   if (!user) return null;
 
-  // ── Header ──────────────────────────────────────────────────────────────────
+  // ── Header ────────────────────────────────────────────────────────────────
   const header = (
-    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center",
-      marginBottom: 24, paddingBottom: 16, borderBottom: "1px solid #e6e9f2" }}>
+    <div style={{
+      display: "flex", justifyContent: "space-between", alignItems: "center",
+      marginBottom: 28, paddingBottom: 18,
+      borderBottom: `1.5px solid ${C.border}`,
+    }}>
       <div>
-        <div style={{ fontSize: 12, color: "#67708a", marginBottom: 2 }}>
-          <span style={{ background: "#fff3bf", color: "#805500", fontSize: 10,
-            fontWeight: 700, padding: "1px 6px", borderRadius: 3, marginRight: 6 }}>DEV</span>
+        <div style={{ fontSize: 12, color: C.muted, marginBottom: 2 }}>
+          <span style={{
+            background: "#FFF3BF", color: "#805500",
+            fontSize: 10, fontWeight: 700, padding: "1px 6px", borderRadius: 3, marginRight: 6,
+          }}>DEV</span>
           ログイン中
         </div>
-        <div style={{ fontWeight: 700 }}>{user.name}</div>
+        <div style={{ fontWeight: 700, fontSize: 15, color: C.text }}>{user.name}</div>
       </div>
-      <button onClick={logout}
-        style={{ fontSize: 12, color: "#67708a", background: "none", border: "1px solid #e6e9f2",
-          borderRadius: 6, padding: "4px 10px", cursor: "pointer" }}>
+      <button onClick={logout} style={{
+        fontSize: 12, color: C.sub, background: C.card,
+        border: `1.5px solid ${C.border}`, borderRadius: 8,
+        padding: "5px 12px", cursor: "pointer",
+      }}>
         ログアウト
       </button>
     </div>
   );
 
-  // ── Ticket section ──────────────────────────────────────────────────────────
-  const ticketSection = (
-    <div style={{ marginBottom: 28 }}>
-      <label style={labelS}>保有チケット</label>
-      {tickets.length === 0 ? (
-        <div style={{ background: "#fff5f5", border: "1px solid #ffa8a8", borderRadius: 10, padding: 14,
-          fontSize: 14 }}>
-          <p style={{ color: "#c92a2a", margin: "0 0 10px" }}>有効なチケットがありません。</p>
-          <a href="/purchase" style={{
-            display: "inline-block", padding: "9px 16px", borderRadius: 8,
-            background: "#2b8a3e", color: "#fff", fontWeight: 700, fontSize: 13,
-            textDecoration: "none",
-          }}>
-            チケットを購入する →
-          </a>
-        </div>
-      ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          {tickets.map((t) => {
-            const sel = selectedTicket?.id === t.id;
-            return (
-              <button key={t.id} onClick={() => setSelectedTicket(t)}
-                style={{
-                  padding: "12px 16px", borderRadius: 10, textAlign: "left", cursor: "pointer",
-                  border: sel ? "2px solid #3b5bdb" : "1px solid #e6e9f2",
-                  background: sel ? "#eef2ff" : "#fff",
-                }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-                  <span style={{ fontWeight: 700, fontSize: 15 }}>{t.package.name}</span>
-                  <span style={{ fontSize: 22, fontWeight: 800, color: sel ? "#3b5bdb" : "#222" }}>
-                    {t.remainingCount}<span style={{ fontSize: 13, fontWeight: 400, marginLeft: 2 }}>回残り</span>
-                  </span>
-                </div>
-                <div style={{ fontSize: 12, color: "#67708a", marginTop: 4 }}>
-                  有効期限：{t.expiresAt ? `${toShortDate(t.expiresAt)}まで` : "初回レッスン日より起算"}
-                </div>
-              </button>
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
-
-  // ── View: selecting ─────────────────────────────────────────────────────────
+  // ── View: selecting ───────────────────────────────────────────────────────
   if (view === "selecting") return (
-    <main style={mainS}>
+    <main style={S.page()}>
       {header}
-      <h1 style={{ fontSize: 20, marginBottom: 20 }}>レッスンのご予約（50分）</h1>
+      <h1 style={h1S}>レッスンのご予約</h1>
+      <p style={{ color: C.muted, fontSize: 14, marginBottom: 28 }}>50分 ／ 完全1対1</p>
 
-      {ticketSection}
+      {/* Ticket selection */}
+      <div style={{ marginBottom: 28 }}>
+        <label style={S.label()}>保有チケット</label>
+        {tickets.length === 0 ? (
+          <div style={{
+            background: C.redBg, border: `1.5px solid ${C.redBorder}`,
+            borderRadius: 12, padding: 16,
+          }}>
+            <p style={{ color: C.red, fontSize: 14, margin: "0 0 12px" }}>有効なチケットがありません。</p>
+            <a href="/purchase" style={{
+              display: "inline-block", padding: "9px 16px", borderRadius: 8,
+              background: C.yellow, color: C.text, fontWeight: 700, fontSize: 13,
+            }}>
+              チケットを購入する →
+            </a>
+          </div>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {tickets.map((t) => {
+              const sel = selectedTicket?.id === t.id;
+              return (
+                <button key={t.id} onClick={() => setSelectedTicket(t)} style={{
+                  padding: "14px 16px", borderRadius: 12, textAlign: "left", cursor: "pointer",
+                  border: `1.5px solid ${sel ? C.yellow : C.border}`,
+                  background: sel ? C.yellowLight : C.card,
+                  boxShadow: sel ? `0 0 0 1px ${C.yellow}` : "none",
+                }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+                    <span style={{ fontWeight: 700, fontSize: 15, color: C.text }}>{t.package.name}</span>
+                    <span style={{ fontSize: 24, fontWeight: 800, color: sel ? "#8B6F00" : C.text }}>
+                      {t.remainingCount}<span style={{ fontSize: 13, fontWeight: 400, marginLeft: 2, color: C.sub }}>回残り</span>
+                    </span>
+                  </div>
+                  <div style={{ fontSize: 12, color: C.muted, marginTop: 4 }}>
+                    有効期限：{t.expiresAt ? `${toShortDate(t.expiresAt)}まで` : "初回レッスン日より起算"}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
 
       {tickets.length > 0 && (
         <>
           <div style={{ marginBottom: 24 }}>
-            <label style={labelS}>日付</label>
+            <label style={S.label()}>日付</label>
             <input type="date" min={minDate()} max={maxDate()} value={selectedDate}
               onChange={(e) => { setSelectedDate(e.target.value); setSelectedStart(""); }}
-              style={inputS} />
+              style={S.input()} />
           </div>
 
           {selectedDate && (
             <div style={{ marginBottom: 28 }}>
-              <label style={labelS}>開始時刻（50分・30分単位）</label>
+              <label style={S.label()}>開始時刻（50分・30分単位）</label>
               {slotsLoading ? (
-                <p style={{ color: "#aab0c7", fontSize: 14 }}>読み込み中...</p>
+                <p style={{ color: C.muted, fontSize: 14 }}>読み込み中...</p>
               ) : slots.length === 0 ? (
-                <p style={{ color: "#aab0c7", fontSize: 14 }}>この日は空き枠がありません。別の日をお試しください。</p>
+                <p style={{ color: C.muted, fontSize: 14 }}>この日は空き枠がありません。別の日をお試しください。</p>
               ) : (
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
                   {slots.map((s) => {
@@ -236,15 +215,7 @@ export default function RegularPage() {
                     return (
                       <button key={s.startAt} disabled={!s.available}
                         onClick={() => { setSelectedStart(s.startAt); setSelectedEnd(s.displayEndAt); }}
-                        style={{
-                          padding: "10px 14px", borderRadius: 8, fontSize: 13,
-                          cursor: s.available ? "pointer" : "not-allowed",
-                          border: sel ? "2px solid #3b5bdb" : "1px solid #e6e9f2",
-                          background: sel ? "#eef2ff" : s.available ? "#fff" : "#f6f7fb",
-                          color: sel ? "#3b5bdb" : s.available ? "#222" : "#c0c5d8",
-                          fontWeight: sel ? 700 : 400,
-                          minWidth: 110,
-                        }}>
+                        style={slotBtnS(sel, s.available)}>
                         {toTime(s.startAt)}〜{toTime(s.displayEndAt)}
                         {!s.available && <span style={{ fontSize: 11, marginLeft: 4 }}>×</span>}
                       </button>
@@ -255,123 +226,105 @@ export default function RegularPage() {
             </div>
           )}
 
-          <button onClick={() => setView("confirming")}
-            disabled={!selectedStart || !selectedTicket}
-            style={btnStyle(!selectedStart || !selectedTicket)}>
+          <button onClick={() => setView("confirming")} disabled={!selectedStart || !selectedTicket}
+            style={S.primaryBtn(!selectedStart || !selectedTicket)}>
             予約内容を確認する →
           </button>
         </>
       )}
 
-      <p style={{ marginTop: 28, fontSize: 13, color: "#aab0c7" }}>
-        ※ 無料体験は <a href="/trial" style={{ color: "#3b5bdb" }}>こちら</a>
+      <p style={{ marginTop: 28, fontSize: 13, color: C.muted }}>
+        無料体験は <a href="/trial" style={{ color: C.yellow, fontWeight: 700, textDecoration: "underline" }}>こちら</a>
       </p>
     </main>
   );
 
-  // ── View: confirming ────────────────────────────────────────────────────────
+  // ── View: confirming ──────────────────────────────────────────────────────
   if (view === "confirming") return (
-    <main style={mainS}>
+    <main style={S.page()}>
       {header}
-      <h1 style={{ fontSize: 20, marginBottom: 24 }}>ご予約内容の確認</h1>
+      <h1 style={h1S}>ご予約内容の確認</h1>
+      <p style={{ color: C.muted, fontSize: 14, marginBottom: 28 }}>内容をご確認のうえ確定してください。</p>
 
-      <div style={{ background: "#eef2ff", borderRadius: 12, padding: 20, marginBottom: 24 }}>
-        <Row label="日時">
-          {toDate(selectedStart)}<br />
-          {toTime(selectedStart)}〜{toTime(selectedEnd)}（50分）
-        </Row>
-        <Row label="チケット">
+      <div style={{ ...S.card(22), background: C.yellowLight, borderColor: C.yellow, marginBottom: 24 }}>
+        <InfoRow label="日時">
+          <span style={{ fontWeight: 700 }}>{toDate(selectedStart)}</span>
+          <br />{toTime(selectedStart)} 〜 {toTime(selectedEnd)}（50分）
+        </InfoRow>
+        <InfoRow label="チケット">
           {selectedTicket?.package.name}（残り{selectedTicket?.remainingCount}回
-          <span style={{ color: "#3b5bdb", marginLeft: 6 }}>→ 予約後{(selectedTicket?.remainingCount ?? 1) - 1}回</span>）
-        </Row>
+          <span style={{ color: "#8B6F00", fontWeight: 700, marginLeft: 6 }}>
+            → {(selectedTicket?.remainingCount ?? 1) - 1}回
+          </span>）
+        </InfoRow>
       </div>
 
-      {submitError && (
-        <div style={{ color: "#e03131", background: "#fff5f5", border: "1px solid #ffa8a8",
-          borderRadius: 8, padding: 12, fontSize: 14, marginBottom: 16 }}>
-          {submitError}
-        </div>
-      )}
+      {submitError && <div style={S.errorBox()}>{submitError}</div>}
 
       <div style={{ display: "flex", gap: 10 }}>
-        <button onClick={() => { setView("selecting"); setSubmitError(""); }} style={backBtnS}>
-          ← 戻る
-        </button>
-        <button onClick={submitBooking} disabled={submitting} style={btnStyle(submitting)}>
+        <button onClick={() => { setView("selecting"); setSubmitError(""); }} style={S.backBtn()}>← 戻る</button>
+        <button onClick={submitBooking} disabled={submitting} style={S.primaryBtn(submitting)}>
           {submitting ? "予約中..." : "予約を確定する"}
         </button>
       </div>
     </main>
   );
 
-  // ── View: complete ──────────────────────────────────────────────────────────
+  // ── View: complete ────────────────────────────────────────────────────────
   return (
-    <main style={mainS}>
+    <main style={S.page()}>
       {header}
-      <div style={{ textAlign: "center", padding: "32px 0" }}>
-        <div style={{ fontSize: 52, marginBottom: 16 }}>✅</div>
-        <h2 style={{ fontSize: 20, marginBottom: 8 }}>ご予約が完了しました！</h2>
-        <p style={{ color: "#67708a", marginBottom: 28 }}>チケットを1回消化しました。</p>
+      <div style={{ textAlign: "center", padding: "28px 0" }}>
+        <div style={{ fontSize: 60, marginBottom: 16 }}>✅</div>
+        <h2 style={{ fontSize: 22, fontWeight: 800, color: C.text, marginBottom: 8 }}>ご予約が完了しました！</h2>
+        <p style={{ color: C.sub, marginBottom: 28 }}>チケットを1回消化しました。</p>
 
-        <div style={{ background: "#eef2ff", borderRadius: 12, padding: 20,
-          marginBottom: 24, textAlign: "left" }}>
-          <Row label="日時">
-            {result && toDate(result.startAt)}<br />
-            {result && toTime(result.startAt)}〜（50分）
-          </Row>
-          <Row label="チケット残り">
-            <span style={{ fontSize: 20, fontWeight: 800, color: "#3b5bdb" }}>
+        <div style={{ ...S.card(22), marginBottom: 24, textAlign: "left", background: C.yellowLight, borderColor: C.yellow }}>
+          <InfoRow label="日時">
+            <span style={{ fontWeight: 700 }}>{result && toDate(result.startAt)}</span>
+            <br />{result && toTime(result.startAt)} 〜（50分）
+          </InfoRow>
+          <InfoRow label="残りチケット">
+            <span style={{ fontSize: 22, fontWeight: 800, color: "#8B6F00" }}>
               {result?.remainingAfter}回
             </span>
-          </Row>
-          <Row label="予約ID">
-            <code style={{ fontSize: 11, color: "#3b5bdb" }}>{result?.bookingId}</code>
-          </Row>
+          </InfoRow>
+          <InfoRow label="予約ID">
+            <code style={{ fontSize: 11, background: "#FFFFFF", padding: "2px 6px", borderRadius: 4 }}>
+              {result?.bookingId}
+            </code>
+          </InfoRow>
         </div>
 
-        <p style={{ color: "#67708a", fontSize: 13, marginBottom: 24 }}>
+        <p style={{ color: C.muted, fontSize: 13, marginBottom: 24 }}>
           ※ 確認メールは開発中のためサーバーログに出力されます。
         </p>
 
-        <button onClick={bookAnother} style={btnStyle(false)}>
-          続けて予約する
-        </button>
+        <button onClick={bookAnother} style={S.primaryBtn(false)}>続けて予約する</button>
       </div>
     </main>
   );
 }
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
-function Row({ label, children }: { label: string; children: React.ReactNode }) {
+function InfoRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div style={{ display: "flex", gap: 16, marginBottom: 10, fontSize: 14 }}>
-      <span style={{ color: "#67708a", minWidth: 80, flexShrink: 0 }}>{label}</span>
-      <span style={{ fontWeight: 600, lineHeight: 1.5 }}>{children}</span>
+    <div style={{ display: "flex", gap: 16, marginBottom: 10, fontSize: 14, alignItems: "flex-start" }}>
+      <span style={{ color: C.sub, minWidth: 72, flexShrink: 0 }}>{label}</span>
+      <span style={{ fontWeight: 600, lineHeight: 1.6 }}>{children}</span>
     </div>
   );
 }
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
-const mainS: React.CSSProperties = {
-  maxWidth: 640, margin: "0 auto", padding: "24px 16px", fontFamily: "sans-serif",
-};
+const h1S: React.CSSProperties = { fontSize: 22, fontWeight: 800, color: C.text, margin: "0 0 4px" };
 
-const labelS: React.CSSProperties = {
-  display: "block", fontWeight: 600, fontSize: 14, marginBottom: 10, color: "#333",
-};
-
-const inputS: React.CSSProperties = {
-  width: "100%", padding: "10px 12px", borderRadius: 8,
-  border: "1px solid #d0d5e8", fontSize: 14, boxSizing: "border-box",
-};
-
-const btnStyle = (disabled: boolean): React.CSSProperties => ({
-  flex: 1, width: "100%", padding: "13px 20px", borderRadius: 10, fontSize: 15, fontWeight: 700,
-  background: disabled ? "#aab0c7" : "#3b5bdb", color: "#fff",
-  border: "none", cursor: disabled ? "not-allowed" : "pointer",
+const slotBtnS = (sel: boolean, available: boolean): React.CSSProperties => ({
+  padding: "10px 14px", borderRadius: 10, fontSize: 13,
+  cursor: available ? "pointer" : "not-allowed",
+  border: `1.5px solid ${sel ? C.yellow : available ? C.border : "#EEEEEE"}`,
+  background: sel ? C.yellow : available ? C.card : "#F5F5F5",
+  color: sel ? C.text : available ? C.text : "#CCCCCC",
+  fontWeight: sel ? 700 : 400,
+  minWidth: 110,
 });
-
-const backBtnS: React.CSSProperties = {
-  padding: "13px 16px", borderRadius: 10, fontSize: 14,
-  background: "#f6f7fb", color: "#555", border: "1px solid #e6e9f2", cursor: "pointer",
-};

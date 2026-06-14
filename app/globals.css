@@ -1,0 +1,42 @@
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: #FFFCF5;
+  font-family: 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', 'Meiryo', sans-serif;
+  color: #1A1A1A;
+  -webkit-font-smoothing: antialiased;
+}
+
+a { text-decoration: none; color: inherit; }
+button { font-family: inherit; }
+input, select, textarea { font-family: inherit; }
+
+input:focus,
+select:focus,
+textarea:focus {
+  outline: none !important;
+  border-color: #F5C100 !important;
+  box-shadow: 0 0 0 3px rgba(245,193,0,0.18) !important;
+}
+
+/* ── Nav links ──────────────────────────────── */
+.nav-link {
+  color: #666;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  white-space: nowrap;
+  transition: color 0.15s, background 0.15s;
+}
+.nav-link:hover { color: #1A1A1A; background: #FFF6CC; }
+
+/* ── Button press feel ──────────────────────── */
+button:not(:disabled):active { transform: scale(0.98); }
+
+/* ── Mobile nav ─────────────────────────────── */
+@media (max-width: 620px) {
+  .nav-link { font-size: 12px; padding: 5px 8px; }
+  .nav-logo-text { font-size: 14px !important; }
+}

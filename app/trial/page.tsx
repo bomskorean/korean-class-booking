@@ -1,16 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
-
-// ─── Types ───────────────────────────────────────────────────────────────────
-interface SlotOption {
-  startAt: string;
-  displayEndAt: string;
-  available: boolean;
-}
-interface BookingResult {
-  bookingId: string;
-  startAt: string;
-}
+import { C, S } from "@/lib/design";
 
 // ─── Options ─────────────────────────────────────────────────────────────────
 const STUDY_PERIOD_OPTIONS = [
@@ -40,53 +30,41 @@ const MODE_OPTIONS = [
   { value: "BOTH",    label: "どちらでも" },
 ];
 
+// ─── Types ───────────────────────────────────────────────────────────────────
+interface SlotOption  { startAt: string; displayEndAt: string; available: boolean }
+interface BookingResult { bookingId: string; startAt: string }
+
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 const jst = (iso: string, opts: Intl.DateTimeFormatOptions) =>
   new Date(iso).toLocaleString("ja-JP", { timeZone: "Asia/Tokyo", ...opts });
-
 const toDate = (iso: string) =>
   jst(iso, { year: "numeric", month: "long", day: "numeric", weekday: "short" });
+const toTime = (iso: string) => jst(iso, { hour: "2-digit", minute: "2-digit" });
+const minDate = () => { const d = new Date(); d.setDate(d.getDate() + 1); return d.toLocaleDateString("sv", { timeZone: "Asia/Tokyo" }); };
+const maxDate = () => { const d = new Date(); d.setDate(d.getDate() + 30); return d.toLocaleDateString("sv", { timeZone: "Asia/Tokyo" }); };
 
-const toTime = (iso: string) =>
-  jst(iso, { hour: "2-digit", minute: "2-digit" });
-
-const minDate = () => {
-  const d = new Date();
-  d.setDate(d.getDate() + 1);
-  return d.toLocaleDateString("sv", { timeZone: "Asia/Tokyo" });
-};
-const maxDate = () => {
-  const d = new Date();
-  d.setDate(d.getDate() + 30);
-  return d.toLocaleDateString("sv", { timeZone: "Asia/Tokyo" });
-};
-
-// ─── Main component ───────────────────────────────────────────────────────────
+// ─── Main ─────────────────────────────────────────────────────────────────────
 export default function TrialPage() {
   const [step, setStep] = useState(1);
 
-  // Step 1 — intake
-  const [studyPeriod, setStudyPeriod] = useState("");
-  const [motivations, setMotivations] = useState<string[]>([]);
-  const [experience, setExperience] = useState("");
+  const [studyPeriod, setStudyPeriod]   = useState("");
+  const [motivations, setMotivations]   = useState<string[]>([]);
+  const [experience, setExperience]     = useState("");
   const [preferredMode, setPreferredMode] = useState("");
-  const [goalText, setGoalText] = useState("");
+  const [goalText, setGoalText]         = useState("");
 
-  // Step 2 — slot
   const [selectedDate, setSelectedDate] = useState("");
-  const [slots, setSlots] = useState<SlotOption[]>([]);
+  const [slots, setSlots]               = useState<SlotOption[]>([]);
   const [slotsLoading, setSlotsLoading] = useState(false);
   const [selectedStart, setSelectedStart] = useState("");
-  const [selectedEnd, setSelectedEnd] = useState("");
+  const [selectedEnd, setSelectedEnd]     = useState("");
 
-  // Step 3 — contact
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
+  const [name, setName]             = useState("");
+  const [email, setEmail]           = useState("");
   const [lineHandle, setLineHandle] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
 
-  // Step 4 — result
   const [result, setResult] = useState<BookingResult | null>(null);
 
   useEffect(() => {
@@ -96,7 +74,7 @@ export default function TrialPage() {
     setSelectedStart("");
     fetch(`/api/slots?date=${selectedDate}&kind=trial`)
       .then((r) => r.json())
-      .then((data) => setSlots(data.slots ?? []))
+      .then((d) => setSlots(d.slots ?? []))
       .catch(() => setSlots([]))
       .finally(() => setSlotsLoading(false));
   }, [selectedDate]);
@@ -119,8 +97,7 @@ export default function TrialPage() {
           studyPeriod, motivations, experience,
           textbooks: [], preferredMode,
           goalText: goalText || undefined,
-          name: name.trim(),
-          email: email.trim(),
+          name: name.trim(), email: email.trim(),
           lineUserId: lineHandle.trim() || undefined,
           startAt: selectedStart,
         }),
@@ -136,217 +113,265 @@ export default function TrialPage() {
     }
   }
 
-  return (
-    <main style={{ maxWidth: 640, margin: "0 auto", padding: "24px 16px", fontFamily: "sans-serif" }}>
-      <h1 style={{ fontSize: 20, marginBottom: 4 }}>無料体験レッスンのご予約</h1>
-      <p style={{ color: "#67708a", fontSize: 14, marginBottom: 28 }}>50分 ／ 無料 ／ ログイン不要</p>
-
-      {/* Step indicator */}
-      {step < 4 && (
-        <div style={{ display: "flex", gap: 8, marginBottom: 32 }}>
-          {["アンケート", "日程選択", "連絡先"].map((label, i) => {
-            const done = step > i + 1;
-            const active = step === i + 1;
-            return (
-              <div key={i} style={{ flex: 1, textAlign: "center" }}>
-                <div style={{ height: 4, borderRadius: 2, marginBottom: 6,
-                  background: active || done ? "#3b5bdb" : "#e6e9f2",
-                  opacity: done ? 0.45 : 1 }} />
-                <span style={{ fontSize: 11, color: active ? "#3b5bdb" : "#aab0c7" }}>{label}</span>
+  // ── Step indicator ────────────────────────────────────────────────────────
+  const STEPS = ["アンケート", "日程選択", "連絡先"];
+  const stepIndicator = step < 4 && (
+    <div style={{ display: "flex", alignItems: "flex-start", marginBottom: 36 }}>
+      {STEPS.map((label, i) => {
+        const idx = i + 1;
+        const done    = step > idx;
+        const current = step === idx;
+        return (
+          <div key={label} style={{ display: "flex", alignItems: "center", flex: i < STEPS.length - 1 ? 1 : 0 }}>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
+              <div style={{
+                width: 34, height: 34, borderRadius: "50%",
+                background: done ? C.yellow : current ? C.yellow : "#EEEEEE",
+                border: `2px solid ${done || current ? C.yellow : "#DDDDDD"}`,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                fontWeight: 800, fontSize: 14, color: done || current ? C.text : "#BBBBBB",
+                flexShrink: 0,
+              }}>
+                {done ? "✓" : idx}
               </div>
-            );
-          })}
+              <span style={{ fontSize: 11, fontWeight: 600, color: current ? C.text : "#AAAAAA", whiteSpace: "nowrap" }}>
+                {label}
+              </span>
+            </div>
+            {i < STEPS.length - 1 && (
+              <div style={{
+                flex: 1, height: 2, marginBottom: 20,
+                background: step > idx ? C.yellow : "#EEEEEE",
+                margin: "0 6px 20px",
+              }} />
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+
+  // ── Step 1 ────────────────────────────────────────────────────────────────
+  if (step === 1) return (
+    <main style={S.page()}>
+      <div style={{ marginBottom: 28 }}>
+        <h1 style={h1S}>無料体験レッスンのご予約</h1>
+        <p style={{ color: C.muted, fontSize: 14 }}>50分 ／ 無料 ／ ログイン不要</p>
+      </div>
+      {stepIndicator}
+
+      <Section title="勉強の目標期間">
+        {STUDY_PERIOD_OPTIONS.map((o) => (
+          <RadioCard key={o.value} {...o} checked={studyPeriod === o.value} onChange={setStudyPeriod} />
+        ))}
+      </Section>
+
+      <Section title="韓国語を始めるきっかけ（複数可）">
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+          {MOTIVATION_OPTIONS.map((o) => (
+            <Chip key={o.value} {...o} checked={motivations.includes(o.value)} onChange={toggleMotivation} />
+          ))}
         </div>
-      )}
+      </Section>
 
-      {/* ── Step 1: Intake ───────────────────────────────────────────────── */}
-      {step === 1 && (
-        <div>
-          <h2 style={h2}>まずは簡単なアンケートにお答えください</h2>
+      <Section title="韓国語の経験">
+        {EXPERIENCE_OPTIONS.map((o) => (
+          <RadioCard key={o.value} {...o} checked={experience === o.value} onChange={setExperience} />
+        ))}
+      </Section>
 
-          <Field label="勉強の目標期間">
-            {STUDY_PERIOD_OPTIONS.map((o) => (
-              <Radio key={o.value} {...o} checked={studyPeriod === o.value} onChange={setStudyPeriod} />
-            ))}
-          </Field>
+      <Section title="希望するレッスン形式">
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          {MODE_OPTIONS.map((o) => (
+            <Chip key={o.value} {...o} checked={preferredMode === o.value} onChange={setPreferredMode} />
+          ))}
+        </div>
+      </Section>
 
-          <Field label="韓国語を始めるきっかけ（複数可）">
+      <Section title="目標・ひとこと（任意）">
+        <textarea value={goalText} onChange={(e) => setGoalText(e.target.value)}
+          placeholder="例：来年の旅行までに挨拶程度できるようになりたいです"
+          rows={3} style={{ ...S.input(), resize: "vertical" }} />
+      </Section>
+
+      <button onClick={() => setStep(2)} disabled={!step1Ok} style={S.primaryBtn(!step1Ok)}>
+        次へ：日程を選ぶ →
+      </button>
+    </main>
+  );
+
+  // ── Step 2 ────────────────────────────────────────────────────────────────
+  if (step === 2) return (
+    <main style={S.page()}>
+      <div style={{ marginBottom: 28 }}>
+        <h1 style={h1S}>無料体験レッスンのご予約</h1>
+        <p style={{ color: C.muted, fontSize: 14 }}>50分 ／ 無料 ／ ログイン不要</p>
+      </div>
+      {stepIndicator}
+
+      <Section title="日付">
+        <input type="date" min={minDate()} max={maxDate()} value={selectedDate}
+          onChange={(e) => { setSelectedDate(e.target.value); setSelectedStart(""); }}
+          style={S.input()} />
+      </Section>
+
+      {selectedDate && (
+        <Section title="開始時刻（50分・開始は正時のみ）">
+          {slotsLoading ? (
+            <p style={{ color: C.muted, fontSize: 14 }}>読み込み中...</p>
+          ) : slots.length === 0 ? (
+            <p style={{ color: C.muted, fontSize: 14 }}>この日は空き枠がありません。別の日をお試しください。</p>
+          ) : (
             <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-              {MOTIVATION_OPTIONS.map((o) => (
-                <Chip key={o.value} {...o} checked={motivations.includes(o.value)} onChange={toggleMotivation} />
-              ))}
-            </div>
-          </Field>
-
-          <Field label="韓国語の経験">
-            {EXPERIENCE_OPTIONS.map((o) => (
-              <Radio key={o.value} {...o} checked={experience === o.value} onChange={setExperience} />
-            ))}
-          </Field>
-
-          <Field label="希望するレッスン形式">
-            {MODE_OPTIONS.map((o) => (
-              <Radio key={o.value} {...o} checked={preferredMode === o.value} onChange={setPreferredMode} />
-            ))}
-          </Field>
-
-          <Field label="目標・ひとこと（任意）">
-            <textarea value={goalText} onChange={(e) => setGoalText(e.target.value)}
-              placeholder="例：来年の旅行までに挨拶程度できるようになりたいです"
-              rows={3} style={textareaS} />
-          </Field>
-
-          <Btn onClick={() => setStep(2)} disabled={!step1Ok}>次へ：日程を選ぶ →</Btn>
-        </div>
-      )}
-
-      {/* ── Step 2: Slot ─────────────────────────────────────────────────── */}
-      {step === 2 && (
-        <div>
-          <h2 style={h2}>ご希望の日時を選んでください</h2>
-
-          <Field label="日付">
-            <input type="date" min={minDate()} max={maxDate()} value={selectedDate}
-              onChange={(e) => { setSelectedDate(e.target.value); setSelectedStart(""); }}
-              style={inputS} />
-          </Field>
-
-          {selectedDate && (
-            <Field label="開始時刻（50分・開始は正時のみ）">
-              {slotsLoading ? (
-                <p style={{ color: "#aab0c7", fontSize: 14 }}>読み込み中...</p>
-              ) : slots.length === 0 ? (
-                <p style={{ color: "#aab0c7", fontSize: 14 }}>この日は空き枠がありません。別の日をお試しください。</p>
-              ) : (
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                  {slots.map((s) => {
-                    const sel = selectedStart === s.startAt;
-                    return (
-                      <button key={s.startAt} disabled={!s.available}
-                        onClick={() => { setSelectedStart(s.startAt); setSelectedEnd(s.displayEndAt); }}
-                        style={{
-                          padding: "10px 16px", borderRadius: 8, fontSize: 14,
-                          cursor: s.available ? "pointer" : "not-allowed",
-                          border: sel ? "2px solid #3b5bdb" : "1px solid #e6e9f2",
-                          background: sel ? "#eef2ff" : s.available ? "#fff" : "#f6f7fb",
-                          color: sel ? "#3b5bdb" : s.available ? "#222" : "#c0c5d8",
-                          fontWeight: sel ? 700 : 400,
-                        }}>
-                        {toTime(s.startAt)}〜{toTime(s.displayEndAt)}
-                        {!s.available && <span style={{ fontSize: 11, marginLeft: 4 }}>×</span>}
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-            </Field>
-          )}
-
-          <div style={{ display: "flex", gap: 10, marginTop: 32 }}>
-            <BackBtn onClick={() => setStep(1)} />
-            <Btn onClick={() => setStep(3)} disabled={!step2Ok}>次へ：連絡先を入力 →</Btn>
-          </div>
-        </div>
-      )}
-
-      {/* ── Step 3: Contact ──────────────────────────────────────────────── */}
-      {step === 3 && (
-        <div>
-          <h2 style={h2}>ご連絡先をご入力ください</h2>
-
-          <div style={{ background: "#eef2ff", borderRadius: 10, padding: 14, marginBottom: 24,
-            fontSize: 14, lineHeight: 1.7 }}>
-            <strong>{toDate(selectedStart)}</strong><br />
-            {toTime(selectedStart)}〜{toTime(selectedEnd)}（50分）
-          </div>
-
-          <Field label="お名前">
-            <input type="text" value={name} onChange={(e) => setName(e.target.value)}
-              placeholder="山田 花子" style={inputS} />
-          </Field>
-
-          <Field label="メールアドレス">
-            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)}
-              placeholder="example@email.com" style={inputS} />
-            <p style={{ fontSize: 12, color: "#67708a", marginTop: 4 }}>
-              ※ 現在開発中のため、確認メールはサーバーのログに出力されます
-            </p>
-          </Field>
-
-          <Field label="LINE ID（任意）">
-            <input type="text" value={lineHandle} onChange={(e) => setLineHandle(e.target.value)}
-              placeholder="@yourlineid" style={inputS} />
-          </Field>
-
-          {submitError && (
-            <div style={{ color: "#e03131", background: "#fff5f5", border: "1px solid #ffa8a8",
-              borderRadius: 8, padding: 12, fontSize: 14, marginBottom: 16 }}>
-              {submitError}
+              {slots.map((s) => {
+                const sel = selectedStart === s.startAt;
+                return (
+                  <button key={s.startAt} disabled={!s.available}
+                    onClick={() => { setSelectedStart(s.startAt); setSelectedEnd(s.displayEndAt); }}
+                    style={slotBtnS(sel, s.available)}>
+                    {toTime(s.startAt)}〜{toTime(s.displayEndAt)}
+                    {!s.available && <span style={{ marginLeft: 4, fontSize: 11 }}>×</span>}
+                  </button>
+                );
+              })}
             </div>
           )}
-
-          <div style={{ display: "flex", gap: 10, marginTop: 32 }}>
-            <BackBtn onClick={() => setStep(2)} />
-            <Btn onClick={submit} disabled={!step3Ok || submitting}>
-              {submitting ? "送信中..." : "予約を確定する"}
-            </Btn>
-          </div>
-        </div>
+        </Section>
       )}
 
-      {/* ── Step 4: Complete ─────────────────────────────────────────────── */}
-      {step === 4 && result && (
-        <div style={{ textAlign: "center", padding: "40px 0" }}>
-          <div style={{ fontSize: 52, marginBottom: 16 }}>✅</div>
-          <h2 style={{ fontSize: 20, marginBottom: 8 }}>ご予約ありがとうございます！</h2>
-          <p style={{ color: "#67708a", marginBottom: 28 }}>無料体験レッスンのご予約が完了しました。</p>
+      <div style={{ display: "flex", gap: 10, marginTop: 8 }}>
+        <button onClick={() => setStep(1)} style={S.backBtn()}>← 戻る</button>
+        <button onClick={() => setStep(3)} disabled={!step2Ok} style={S.primaryBtn(!step2Ok)}>
+          次へ：連絡先を入力 →
+        </button>
+      </div>
+    </main>
+  );
 
-          <div style={{ background: "#eef2ff", borderRadius: 12, padding: 20, marginBottom: 24, textAlign: "left" }}>
-            <div style={{ fontSize: 14, lineHeight: 2 }}>
-              <Row label="日時">
-                {toDate(result.startAt)}<br />{toTime(result.startAt)}〜（50分）
-              </Row>
-              <Row label="予約ID">
-                <code style={{ fontSize: 12, color: "#3b5bdb" }}>{result.bookingId}</code>
-              </Row>
-            </div>
-          </div>
+  // ── Step 3 ────────────────────────────────────────────────────────────────
+  if (step === 3) return (
+    <main style={S.page()}>
+      <div style={{ marginBottom: 28 }}>
+        <h1 style={h1S}>無料体験レッスンのご予約</h1>
+        <p style={{ color: C.muted, fontSize: 14 }}>50分 ／ 無料 ／ ログイン不要</p>
+      </div>
+      {stepIndicator}
 
-          <p style={{ color: "#67708a", fontSize: 13, lineHeight: 1.8 }}>
-            ※ 確認メールは開発中のためサーバーログに出力されます。<br />
-            詳細は後日メールにてご連絡いたします。
-          </p>
-          <p style={{ marginTop: 24 }}>
-            <a href="/" style={{ color: "#3b5bdb", fontSize: 14 }}>← トップに戻る</a>
-          </p>
+      <div style={{ ...S.card(), marginBottom: 24, background: C.yellowLight, borderColor: C.yellow }}>
+        <div style={{ fontSize: 14, fontWeight: 700, color: C.text }}>
+          {toDate(selectedStart)}
         </div>
-      )}
+        <div style={{ fontSize: 16, fontWeight: 800, color: C.text, marginTop: 4 }}>
+          {toTime(selectedStart)} 〜 {toTime(selectedEnd)}
+          <span style={{ fontSize: 13, fontWeight: 400, marginLeft: 8, color: C.sub }}>（50分）</span>
+        </div>
+      </div>
+
+      <Section title="お名前">
+        <input type="text" value={name} onChange={(e) => setName(e.target.value)}
+          placeholder="山田 花子" style={S.input()} />
+      </Section>
+
+      <Section title="メールアドレス">
+        <input type="email" value={email} onChange={(e) => setEmail(e.target.value)}
+          placeholder="example@email.com" style={S.input()} />
+        <p style={{ fontSize: 12, color: C.muted, marginTop: 6 }}>
+          ※ 現在開発中のため、確認メールはサーバーログに出力されます
+        </p>
+      </Section>
+
+      <Section title="LINE ID（任意）">
+        <input type="text" value={lineHandle} onChange={(e) => setLineHandle(e.target.value)}
+          placeholder="@yourlineid" style={S.input()} />
+      </Section>
+
+      {submitError && <div style={S.errorBox()}>{submitError}</div>}
+
+      <div style={{ display: "flex", gap: 10, marginTop: 8 }}>
+        <button onClick={() => setStep(2)} style={S.backBtn()}>← 戻る</button>
+        <button onClick={submit} disabled={!step3Ok || submitting} style={S.primaryBtn(!step3Ok || submitting)}>
+          {submitting ? "送信中..." : "予約を確定する"}
+        </button>
+      </div>
+    </main>
+  );
+
+  // ── Step 4 (Complete) ─────────────────────────────────────────────────────
+  return (
+    <main style={S.page()}>
+      <div style={{ textAlign: "center", padding: "32px 0" }}>
+        <div style={{ fontSize: 60, marginBottom: 16 }}>🎉</div>
+        <h2 style={{ fontSize: 22, fontWeight: 800, color: C.text, marginBottom: 8 }}>
+          ご予約ありがとうございます！
+        </h2>
+        <p style={{ color: C.sub, marginBottom: 32, fontSize: 15 }}>
+          無料体験レッスンのご予約が完了しました。
+        </p>
+
+        {result && (
+          <div style={{ ...S.card(24), marginBottom: 28, textAlign: "left", background: C.yellowLight, borderColor: C.yellow }}>
+            <InfoRow label="日時">
+              <span style={{ fontWeight: 700 }}>{toDate(result.startAt)}</span>
+              <br />
+              <span>{toTime(result.startAt)} 〜（50分）</span>
+            </InfoRow>
+            <InfoRow label="予約ID">
+              <code style={{ fontSize: 12, background: "#FFFFFF", padding: "2px 6px", borderRadius: 4 }}>
+                {result.bookingId}
+              </code>
+            </InfoRow>
+          </div>
+        )}
+
+        <p style={{ color: C.muted, fontSize: 13, lineHeight: 1.8, marginBottom: 28 }}>
+          ※ 確認メールは開発中のためサーバーログに出力されます。<br />
+          詳細は後日メールにてご連絡いたします。
+        </p>
+
+        <a href="/" style={{
+          display: "inline-block", padding: "13px 28px",
+          borderRadius: 12, background: C.yellow, color: C.text,
+          fontWeight: 700, fontSize: 15,
+        }}>
+          ← ホームに戻る
+        </a>
+      </div>
     </main>
   );
 }
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div style={{ marginBottom: 24 }}>
-      <label style={{ display: "block", fontWeight: 600, fontSize: 14, marginBottom: 10, color: "#333" }}>
-        {label}
-      </label>
+      <label style={S.label()}>{title}</label>
       {children}
     </div>
   );
 }
 
-function Radio({ value, label, checked, onChange }: {
+function RadioCard({ value, label, checked, onChange }: {
   value: string; label: string; checked: boolean; onChange: (v: string) => void;
 }) {
   return (
-    <label style={{ display: "flex", alignItems: "center", gap: 8, padding: "7px 0",
-      cursor: "pointer", fontSize: 14 }}>
-      <input type="radio" value={value} checked={checked} onChange={() => onChange(value)}
-        style={{ accentColor: "#3b5bdb", width: 16, height: 16 }} />
-      {label}
-    </label>
+    <button type="button" onClick={() => onChange(value)} style={{
+      display: "flex", alignItems: "center", gap: 12,
+      width: "100%", padding: "11px 14px", borderRadius: 10, marginBottom: 6,
+      border: `1.5px solid ${checked ? C.yellow : C.border}`,
+      background: checked ? C.yellowLight : C.card,
+      cursor: "pointer", textAlign: "left",
+      transition: "border-color 0.15s, background 0.15s",
+    }}>
+      <div style={{
+        width: 20, height: 20, borderRadius: "50%", flexShrink: 0,
+        border: `2px solid ${checked ? C.yellow : "#CCCCCC"}`,
+        background: checked ? C.yellow : C.card,
+        display: "flex", alignItems: "center", justifyContent: "center",
+      }}>
+        {checked && <div style={{ width: 7, height: 7, borderRadius: "50%", background: C.text }} />}
+      </div>
+      <span style={{ fontSize: 14, color: C.text, fontWeight: checked ? 700 : 400 }}>{label}</span>
+    </button>
   );
 }
 
@@ -355,61 +380,35 @@ function Chip({ value, label, checked, onChange }: {
 }) {
   return (
     <button type="button" onClick={() => onChange(value)} style={{
-      padding: "8px 14px", borderRadius: 20, fontSize: 13, cursor: "pointer",
-      border: checked ? "2px solid #3b5bdb" : "1px solid #e6e9f2",
-      background: checked ? "#eef2ff" : "#fff",
-      color: checked ? "#3b5bdb" : "#555",
-      fontWeight: checked ? 700 : 400,
+      padding: "8px 16px", borderRadius: 20,
+      border: `1.5px solid ${checked ? C.yellow : C.border}`,
+      background: checked ? C.yellow : C.card,
+      color: C.text, fontSize: 13,
+      cursor: "pointer", fontWeight: checked ? 700 : 400,
     }}>
       {label}
     </button>
   );
 }
 
-function Btn({ onClick, disabled, children }: {
-  onClick: () => void; disabled?: boolean; children: React.ReactNode;
-}) {
+function InfoRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <button onClick={onClick} disabled={disabled} style={{
-      flex: 1, padding: "13px 20px", borderRadius: 10, fontSize: 15, fontWeight: 700,
-      background: disabled ? "#aab0c7" : "#3b5bdb", color: "#fff",
-      border: "none", cursor: disabled ? "not-allowed" : "pointer",
-    }}>
-      {children}
-    </button>
-  );
-}
-
-function BackBtn({ onClick }: { onClick: () => void }) {
-  return (
-    <button onClick={onClick} style={{
-      padding: "13px 16px", borderRadius: 10, fontSize: 14,
-      background: "#f6f7fb", color: "#555", border: "1px solid #e6e9f2", cursor: "pointer",
-    }}>
-      ← 戻る
-    </button>
-  );
-}
-
-function Row({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div style={{ display: "flex", gap: 16, marginBottom: 8 }}>
-      <span style={{ color: "#67708a", minWidth: 60 }}>{label}</span>
-      <span style={{ fontWeight: 600 }}>{children}</span>
+    <div style={{ display: "flex", gap: 16, marginBottom: 10, fontSize: 14, alignItems: "flex-start" }}>
+      <span style={{ color: C.sub, minWidth: 56, flexShrink: 0, paddingTop: 1 }}>{label}</span>
+      <span style={{ lineHeight: 1.6 }}>{children}</span>
     </div>
   );
 }
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
-const h2: React.CSSProperties = { fontSize: 16, marginBottom: 20 };
+const h1S: React.CSSProperties = { fontSize: 22, fontWeight: 800, color: C.text, margin: "0 0 4px" };
 
-const inputS: React.CSSProperties = {
-  width: "100%", padding: "10px 12px", borderRadius: 8,
-  border: "1px solid #d0d5e8", fontSize: 14, boxSizing: "border-box",
-};
-
-const textareaS: React.CSSProperties = {
-  width: "100%", padding: "10px 12px", borderRadius: 8,
-  border: "1px solid #d0d5e8", fontSize: 14, boxSizing: "border-box",
-  resize: "vertical", fontFamily: "sans-serif",
-};
+const slotBtnS = (sel: boolean, available: boolean): React.CSSProperties => ({
+  padding: "10px 16px", borderRadius: 10, fontSize: 13,
+  cursor: available ? "pointer" : "not-allowed",
+  border: `1.5px solid ${sel ? C.yellow : available ? C.border : "#EEEEEE"}`,
+  background: sel ? C.yellow : available ? C.card : "#F5F5F5",
+  color: sel ? C.text : available ? C.text : "#BBBBBB",
+  fontWeight: sel ? 700 : 400,
+  minWidth: 110,
+});
