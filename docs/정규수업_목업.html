@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>レッスンのご予約 — 馬賑韓国語教室</title>
+<style>
+  :root{--bg:#f6f7fb;--card:#fff;--ink:#1c2330;--sub:#67708a;--line:#e6e9f2;
+    --brand:#3b5bdb;--brand-soft:#eef2ff;--accent:#e8590c;}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:-apple-system,"Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,sans-serif;background:var(--bg);color:var(--ink);line-height:1.6}
+  .wrap{max-width:760px;margin:0 auto;padding:20px}
+  header.top{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;background:var(--card);border:1px solid var(--line);border-radius:14px}
+  .logo{font-weight:800;font-size:17px}
+  .badge{background:var(--brand-soft);color:var(--brand);font-weight:800;font-size:12px;padding:5px 11px;border-radius:999px}
+  .note{font-size:12px;color:var(--sub);text-align:center;margin:10px 0 16px}
+  .ticket{background:linear-gradient(135deg,#3b5bdb,#5c7cfa);color:#fff;border-radius:16px;padding:18px 20px;display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
+  .ticket .big{font-size:30px;font-weight:800}
+  .ticket small{opacity:.85}
+  .pill{background:rgba(255,255,255,.2);border-radius:999px;padding:6px 12px;font-size:12px}
+  h2{font-size:15px;margin:22px 4px 12px;display:flex;align-items:center;gap:8px}
+  h2 .bar{width:4px;height:16px;background:var(--brand);border-radius:2px}
+  .courses{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:4px}
+  .ctab{border:1px solid var(--line);border-radius:999px;padding:8px 14px;font-size:13px;cursor:pointer;background:#fff}
+  .ctab.on{background:var(--brand);color:#fff;border-color:var(--brand);font-weight:700}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px}
+  .day{display:flex;justify-content:space-between;align-items:center}
+  .slots{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:10px}
+  .slot{border:1px solid var(--line);border-radius:10px;text-align:center;padding:10px 4px;font-size:13px;cursor:pointer;background:#fff}
+  .slot small{display:block;font-size:10px;color:inherit;opacity:.7}
+  .slot.sel{background:var(--brand);color:#fff;border-color:var(--brand)}
+  .slot.dis{background:#f1f3f5;color:#adb5bd;text-decoration:line-through;cursor:not-allowed}
+  .legend{font-size:11.5px;color:var(--sub);margin-top:10px;display:flex;gap:14px;flex-wrap:wrap}
+  .dot{display:inline-block;width:9px;height:9px;border-radius:3px;margin-right:4px;vertical-align:middle}
+  .timeline{font-size:12px;color:var(--sub);background:#fbfcff;border:1px dashed var(--line);border-radius:10px;padding:10px 12px;margin-top:10px}
+  .row{display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end;margin-top:14px}
+  .btn{appearance:none;border:0;cursor:pointer;font-weight:700;border-radius:10px;padding:11px 16px;font-size:13px}
+  .btn.primary{background:var(--brand);color:#fff}
+  .btn.ghost{background:#fff;border:1px solid var(--line);color:var(--ink)}
+  footer{font-size:11px;color:var(--sub);text-align:center;margin:22px 0 8px}
+  @media(max-width:560px){.slots{grid-template-columns:repeat(3,1fr)}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="logo">馬賑韓国語教室</div>
+    <span class="badge">レッスン予約</span>
+  </header>
+  <div class="note">※ このページは正規レッスン専用です（別ウィンドウ・要ログイン）。無料体験は別リンクから。</div>
+
+  <div class="ticket">
+    <div>
+      <small>残りチケット</small>
+      <div class="big">6 <span style="font-size:15px;font-weight:600">回</span></div>
+      <small>有効期限 2026/09/20（あと98日）</small>
+    </div>
+    <div style="text-align:right">
+      <div class="pill">8回券 利用中</div>
+      <div style="margin-top:8px"><button class="btn ghost" style="background:rgba(255,255,255,.18);color:#fff;border:0">チケット購入</button></div>
+    </div>
+  </div>
+
+  <h2><span class="bar"></span>コースを選ぶ</h2>
+  <div class="courses">
+    <span class="ctab on">正規クラス</span>
+    <span class="ctab">短期コース</span>
+    <span class="ctab">TOPIK対策</span>
+    <span class="ctab">留学準備</span>
+  </div>
+
+  <h2><span class="bar"></span>日時を選ぶ</h2>
+  <div class="card">
+    <div class="day"><strong>6月15日（月）</strong><span style="font-size:12px;color:var(--sub)">表示50分・30分単位</span></div>
+    <div class="slots">
+      <div class="slot sel">10:00<small>〜10:50</small></div>
+      <div class="slot dis">10:30<small>予約済</small></div>
+      <div class="slot dis">11:00<small>予約済</small></div>
+      <div class="slot">11:30<small>〜12:20</small></div>
+      <div class="slot">13:00<small>〜13:50</small></div>
+      <div class="slot dis">13:30<small>他予約</small></div>
+      <div class="slot">14:00<small>〜14:50</small></div>
+      <div class="slot">14:30<small>〜15:20</small></div>
+    </div>
+    <div class="legend">
+      <span><i class="dot" style="background:var(--brand)"></i>選択中</span>
+      <span><i class="dot" style="background:#fff;border:1px solid var(--line)"></i>予約可</span>
+      <span><i class="dot" style="background:#f1f3f5"></i>予約不可（Googleカレンダー自動ブロック）</span>
+    </div>
+    <div class="timeline">⏱ 10:00を予約 → カレンダー占有 10:00〜11:10（表示は10:00〜10:50）→ 10:30・11:00 自動ブロック → 次は 11:30</div>
+    <div class="row">
+      <button class="btn ghost">オンライン / 対面</button>
+      <button class="btn primary">この時間で予約（チケット1回消化）</button>
+    </div>
+  </div>
+
+  <footer>馬賑韓国語教室 ・ bomskankokugo.com ｜ モックアップ</footer>
+</div>
+<script>
+  document.querySelectorAll('.ctab').forEach(c=>c.addEventListener('click',()=>{
+    document.querySelectorAll('.ctab').forEach(x=>x.classList.remove('on'));c.classList.add('on');}));
+  document.querySelectorAll('.slot:not(.dis)').forEach(s=>s.addEventListener('click',()=>{
+    document.querySelectorAll('.slot').forEach(x=>x.classList.remove('sel'));s.classList.add('sel');}));
+</script>
+</body>
+</html>
