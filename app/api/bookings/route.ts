@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 // 予約作成 API（PRD 3.1/3.7/6.4）
 // 流れ：チケット確認 → 占有区間でカレンダー再確認(busy) → トランザクションで保留→確定 →
 //        Googleカレンダーにイベント作成 → 通知(メール/LINE)

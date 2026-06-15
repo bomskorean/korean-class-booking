@@ -1,3 +1,4 @@
+export const dynamic = "force-dynamic";
 // 開発専用: テスト学生を選んでセッションCookieをセット
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
