@@ -1,4 +1,5 @@
-// 馬賑韓国語教室 予約システム — データモデル (PostgreSQL / Neon)
+// 馬賑韓国語教室 予約システム — データモデル
+// PRD 4章に対応。Claude Code で調整可。
 
 generator client {
   provider = "prisma-client-js"
@@ -9,152 +10,218 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// ─── Enum 値の定数コメント（SQLite では String で保存） ──────────────────────
-// Role              : STUDENT | ADMIN
-// NotifyChannel     : EMAIL | LINE | BOTH
-// Lang              : JA | KO
-// CourseType        : REGULAR | SHORT | TOPIK | STUDY_ABROAD
-// LessonMode        : OFFLINE | ONLINE | BOTH
-// BookingType       : TRIAL | REGULAR
-// BookingStatus     : CONFIRMED | CANCELLED | CHANGED | COMPLETED | NO_SHOW
-// SlotStatus        : OPEN | CLOSED | FULL | BLOCKED_BY_CALENDAR
-// TicketStatus      : ACTIVE | EXPIRED | USED_UP
-// TicketSource      : PAYMENT | MANUAL
-// PaymentMethod     : STRIPE_CARD | PAYPAY | OFFLINE
-// PaymentStatus     : PENDING | PAID | REFUNDED
-// Attendance        : PRESENT | ABSENT | LATE
-// RefundStatus      : REQUESTED | APPROVED | PAID
+enum Role {
+  STUDENT
+  ADMIN
+}
+
+enum NotifyChannel {
+  EMAIL
+  LINE
+  BOTH
+}
+
+enum Lang {
+  JA
+  KO
+}
+
+enum CourseType {
+  REGULAR
+  SHORT
+  TOPIK
+  STUDY_ABROAD
+}
+
+enum LessonMode {
+  OFFLINE
+  ONLINE
+  BOTH
+}
+
+enum BookingType {
+  TRIAL
+  REGULAR
+}
+
+enum BookingStatus {
+  CONFIRMED
+  CANCELLED
+  CHANGED
+  COMPLETED
+  NO_SHOW
+}
+
+enum SlotStatus {
+  OPEN
+  CLOSED
+  FULL
+  BLOCKED_BY_CALENDAR
+}
+
+enum TicketStatus {
+  ACTIVE
+  EXPIRED
+  USED_UP
+}
+
+enum TicketSource {
+  PAYMENT
+  MANUAL
+}
+
+enum PaymentMethod {
+  STRIPE_CARD
+  PAYPAY
+  OFFLINE
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  REFUNDED
+}
+
+enum Attendance {
+  PRESENT
+  ABSENT
+  LATE
+}
+
+enum RefundStatus {
+  REQUESTED
+  APPROVED
+  PAID
+}
 
 model User {
-  id                String   @id @default(cuid())
-  role              String   @default("STUDENT")
-  name              String
-  email             String   @unique
-  phone             String?
-  lineUserId        String?  @unique
-  preferredLang     String   @default("JA")
-  notifyChannel     String   @default("BOTH")
-  noShowCount       Int      @default(0)
-  lateCancelCount   Int      @default(0)
-  bookingRestricted Boolean  @default(false)
-  createdAt         DateTime @default(now())
+  id               String        @id @default(cuid())
+  role             Role          @default(STUDENT)
+  name             String
+  email            String        @unique
+  phone            String?
+  lineUserId       String?       @unique
+  preferredLang    Lang          @default(JA)
+  notifyChannel    NotifyChannel @default(BOTH)
+  noShowCount      Int           @default(0)   // 第7条 反復No-show管理
+  lateCancelCount  Int           @default(0)
+  bookingRestricted Boolean      @default(false)
+  createdAt        DateTime      @default(now())
 
-  tickets    UserTicket[]
-  bookings   Booking[]
-  payments   Payment[]
-  progress   ProgressLog[]
-  trials     TrialIntake[]
+  tickets   UserTicket[]
+  bookings  Booking[]
+  payments  Payment[]
+  progress  ProgressLog[]
+  trials    TrialIntake[]
   agreements Agreement[]
-  refunds    Refund[]
+  refunds   Refund[]
 }
 
 model Course {
-  id          String  @id @default(cuid())
-  type        String  // CourseType
+  id          String     @id @default(cuid())
+  type        CourseType
   titleJa     String
   titleKo     String?
   description String?
   level       String?
   lessonCount Int?
   imageUrl    String?
-  isActive    Boolean @default(true)
-
-  slots Slot[]
+  isActive    Boolean    @default(true)
+  slots       Slot[]
 }
 
 model TicketPackage {
-  id             String  @id @default(cuid())
-  name           String
-  totalCount     Int
-  price          Int
-  unitPrice      Int
-  listPrice      Int     @default(4000)
-  validMonths    Int
-  validFromBasis String  @default("first_lesson")
-  courseScope    String?
-
-  tickets UserTicket[]
+  id            String   @id @default(cuid())
+  name          String                  // "4回券" 等
+  totalCount    Int
+  price         Int                     // 税込（円）
+  unitPrice     Int
+  listPrice     Int       @default(4000) // 返金精算用は購入単価を使用
+  validMonths   Int                     // 1-3回=2 / 4-5=3 / 6-7=4 / 8=5 / 12=7
+  validFromBasis String   @default("first_lesson") // 初回レッスン日起算
+  courseScope   String?
+  tickets       UserTicket[]
 }
 
 model UserTicket {
-  id             String    @id @default(cuid())
+  id             String        @id @default(cuid())
   userId         String
   packageId      String
   remainingCount Int
-  heldCount      Int       @default(0)
-  freeChangeUsed Boolean   @default(false)
-  validFrom      DateTime?
+  heldCount      Int           @default(0)   // 予約時の保留(仮押さえ)
+  freeChangeUsed Boolean       @default(false) // 第7条 無料変更1回
+  validFrom      DateTime?     // 初回レッスン日（未確定なら null）
   expiresAt      DateTime?
-  status         String    @default("ACTIVE")   // TicketStatus
-  source         String    @default("PAYMENT")  // TicketSource
-  createdAt      DateTime  @default(now())
+  status         TicketStatus  @default(ACTIVE)
+  source         TicketSource  @default(PAYMENT)
+  createdAt      DateTime      @default(now())
 
-  user     User          @relation(fields: [userId],    references: [id])
+  user     User          @relation(fields: [userId], references: [id])
   package  TicketPackage @relation(fields: [packageId], references: [id])
   bookings Booking[]
 }
 
 model Slot {
-  id              String   @id @default(cuid())
-  courseId        String
-  teacherId       String?
-  startAt         DateTime
-  displayEndAt    DateTime
-  blockEndAt      DateTime
-  displayDuration Int      @default(50)
-  blockDuration   Int
-  capacity        Int      @default(1)
-  bookedCount     Int      @default(0)
-  mode            String   @default("BOTH")  // LessonMode
-  location        String?
-  onlineUrl       String?
-  gcalEventId     String?
-  status          String   @default("OPEN")  // SlotStatus
+  id               String     @id @default(cuid())
+  courseId         String
+  teacherId        String?
+  startAt          DateTime
+  displayEndAt     DateTime              // start + 50分
+  blockEndAt       DateTime              // 無料体験 +60 / 正規 +70
+  displayDuration  Int        @default(50)
+  blockDuration    Int                   // 60 or 70
+  capacity         Int        @default(1)
+  bookedCount      Int        @default(0)
+  mode             LessonMode @default(BOTH)
+  location         String?
+  onlineUrl        String?
+  gcalEventId      String?               // Googleカレンダー連携
+  status           SlotStatus @default(OPEN)
 
   course   Course    @relation(fields: [courseId], references: [id])
   bookings Booking[]
 }
 
 model Booking {
-  id           String    @id @default(cuid())
+  id           String        @id @default(cuid())
   userId       String
   slotId       String
-  type         String    // BookingType: TRIAL | REGULAR
-  status       String    @default("CONFIRMED")  // BookingStatus
+  type         BookingType
+  status       BookingStatus @default(CONFIRMED)
   usedTicketId String?
-  createdAt    DateTime  @default(now())
+  createdAt    DateTime      @default(now())
   cancelledAt  DateTime?
 
-  user       User        @relation(fields: [userId],       references: [id])
-  slot       Slot        @relation(fields: [slotId],       references: [id])
+  user       User        @relation(fields: [userId], references: [id])
+  slot       Slot        @relation(fields: [slotId], references: [id])
   usedTicket UserTicket? @relation(fields: [usedTicketId], references: [id])
   progress   ProgressLog[]
 }
 
 model TrialIntake {
-  id             String   @id @default(cuid())
-  bookingId      String?
-  userId         String?
-  studyPeriod    String
-  motivations    String   // JSON: string[]
-  experience     String
-  textbooks      String   @default("[]")  // JSON: string[]
-  selfLevel      String?
-  preferredMode  String?
-  goalText       String?
+  id            String   @id @default(cuid())
+  bookingId     String?
+  userId        String?
+  studyPeriod   String   // 1m/3m/6m/1y+/undecided
+  motivations   String[] // kpop/study_abroad/travel/drama/hobby/...
+  experience    String   // beginner/self/academy/both
+  textbooks     String[]
+  selfLevel     String?
+  preferredMode String?
+  goalText      String?
   referralSource String?
-  createdAt      DateTime @default(now())
+  createdAt     DateTime @default(now())
 
   user User? @relation(fields: [userId], references: [id])
 }
 
 model Payment {
-  id                    String    @id @default(cuid())
+  id                    String        @id @default(cuid())
   userId                String
   packageId             String?
   amount                Int
-  method                String    // PaymentMethod
-  status                String    @default("PENDING")  // PaymentStatus
+  method                PaymentMethod
+  status                PaymentStatus @default(PENDING)
   stripePaymentIntentId String?
   paidAt                DateTime?
 
@@ -162,25 +229,25 @@ model Payment {
 }
 
 model ProgressLog {
-  id          String   @id @default(cuid())
-  userId      String
-  bookingId   String?
-  attendance  String   @default("PRESENT")  // Attendance
-  levelStage  String?
+  id         String     @id @default(cuid())
+  userId     String
+  bookingId  String?
+  attendance Attendance @default(PRESENT)
+  levelStage String?
   teacherNote String?
-  homework    String?
-  createdAt   DateTime @default(now())
+  homework   String?
+  createdAt  DateTime   @default(now())
 
-  user    User     @relation(fields: [userId],    references: [id])
+  user    User     @relation(fields: [userId], references: [id])
   booking Booking? @relation(fields: [bookingId], references: [id])
 }
 
 model Notification {
   id        String   @id @default(cuid())
   userId    String
-  eventType String
-  channel   String
-  payload   String?  // JSON text (本番PostgreSQLでは Json? に戻す)
+  eventType String   // booking_confirmed / cancelled / reminder / payment ...
+  channel   String   // email / line
+  payload   Json?
   status    String   @default("sent")
   sentAt    DateTime @default(now())
 }
@@ -197,15 +264,15 @@ model Agreement {
 }
 
 model Refund {
-  id            String    @id @default(cuid())
+  id            String       @id @default(cuid())
   userId        String
   userTicketId  String?
   usedCount     Int
-  settledAmount Int
-  cancelFee     Int       @default(0)
-  transferFee   Int       @default(0)
+  settledAmount Int          // used * 購入単価
+  cancelFee     Int          @default(0)
+  transferFee   Int          @default(0)
   refundAmount  Int
-  status        String    @default("REQUESTED")  // RefundStatus
+  status        RefundStatus @default(REQUESTED)
   processedAt   DateTime?
 
   user User @relation(fields: [userId], references: [id])

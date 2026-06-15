@@ -38,18 +38,27 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "その時間帯はすでに登録されています" }, { status: 409 });
   }
 
-  const slot = await prisma.slot.create({
-    data: {
-      courseId:        "REGULAR",
-      startAt,
-      displayEndAt,
-      blockEndAt,
-      displayDuration: 50,
-      blockDuration:   60,
-      mode,
-      status:          "OPEN",
-    },
-  });
+  let slot;
+  try {
+    slot = await prisma.slot.create({
+      data: {
+        courseId:        "REGULAR",
+        startAt,
+        displayEndAt,
+        blockEndAt,
+        displayDuration: 50,
+        blockDuration:   70,
+        mode,
+        status:          "OPEN",
+      },
+    });
+  } catch (e) {
+    console.error("slot create error:", e);
+    return NextResponse.json(
+      { error: "DB エラー。コースデータが未登録の可能性があります（seed を実行してください）" },
+      { status: 500 },
+    );
+  }
 
   return NextResponse.json({ ok: true, slot });
 }

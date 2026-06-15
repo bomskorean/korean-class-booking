@@ -1,5 +1,5 @@
-import { PrismaClient } from "@prisma/client";
-import { PACKAGES, COURSES } from "../lib/pricing";
+import { PrismaClient, LessonMode, SlotStatus } from "@prisma/client";
+import { PACKAGES } from "../lib/pricing";
 
 const prisma = new PrismaClient();
 
@@ -41,43 +41,54 @@ async function main() {
     await prisma.course.upsert({
       where: { id: c.type },
       update: { titleJa: c.titleJa, titleKo: c.titleKo, description: c.description, level: c.level, isActive: true },
-      create: { id: c.type, type: c.type, titleJa: c.titleJa, titleKo: c.titleKo, description: c.description, level: c.level, isActive: true },
+      create: { id: c.type, type: c.type as "REGULAR" | "SHORT" | "TOPIK" | "STUDY_ABROAD", titleJa: c.titleJa, titleKo: c.titleKo, description: c.description, level: c.level, isActive: true },
     });
     console.log(`  ✓ Course: ${c.titleJa}`);
   }
 
   // ── チケット商品（旧データをクリアして再作成） ────────────────────────────
-  console.log("Clearing old ticket data...");
+  console.log("Clearing old ticket data (progress → bookings → tickets → packages)...");
+  await prisma.progressLog.deleteMany({});
+  await prisma.booking.deleteMany({});
   await prisma.userTicket.deleteMany({});
   await prisma.ticketPackage.deleteMany({});
 
-  console.log("Seeding ticket packages (12 = 4 courses × 4/8/12)...");
+  console.log(`Seeding ticket packages (${PACKAGES.length} packages)...`);
   for (const pkg of PACKAGES) {
-    const id = `pkg_${pkg.courseId}_${pkg.count}`;
-    await prisma.ticketPackage.create({
-      data: {
+    const id = `pkg_${pkg.count}`;
+    await prisma.ticketPackage.upsert({
+      where: { id },
+      update: {
+        name:        pkg.name,
+        totalCount:  pkg.count,
+        price:       pkg.price,
+        unitPrice:   pkg.unitPrice,
+        listPrice:   4000,
+        validMonths: pkg.validMonths,
+      },
+      create: {
         id,
-        name:           `${pkg.courseName} ${pkg.name}`,
+        name:           pkg.name,
         totalCount:     pkg.count,
         price:          pkg.price,
         unitPrice:      pkg.unitPrice,
         listPrice:      4000,
         validMonths:    pkg.validMonths,
         validFromBasis: "first_lesson",
-        courseScope:    pkg.courseId,
+        courseScope:    null,
       },
     });
-    console.log(`  ✓ ${pkg.courseName} ${pkg.name} — ¥${pkg.price.toLocaleString()} (¥${pkg.unitPrice}/回, ${pkg.validMonths}か月)`);
+    console.log(`  ✓ ${pkg.name} — ¥${pkg.price.toLocaleString()} (¥${pkg.unitPrice}/回, ${pkg.validMonths}か月)`);
   }
 
   // ── 開発用テスト学生 ─────────────────────────────────────────────────────────
   console.log("Seeding dev test students...");
   const devStudents = [
-    { name: "田中 さくら",              email: "sakura@dev.local", pkgId: "pkg_REGULAR_4",      remaining: 4, validFrom: null },
-    { name: "鈴木 一郎",                email: "ichiro@dev.local", pkgId: "pkg_SHORT_8",         remaining: 2,
+    { name: "田中 さくら",                email: "sakura@dev.local", pkgId: "pkg_4",  remaining: 4, validFrom: null },
+    { name: "鈴木 一郎",                  email: "ichiro@dev.local", pkgId: "pkg_8",  remaining: 2,
       validFrom: new Date(Date.now() - 30 * 86_400_000) },
-    { name: "山田 花子",                email: "hanako@dev.local", pkgId: "pkg_TOPIK_12",        remaining: 8, validFrom: null },
-    { name: "佐藤 次郎（チケットなし）", email: "jiro@dev.local",   pkgId: null,                  remaining: 0, validFrom: null },
+    { name: "山田 花子",                  email: "hanako@dev.local", pkgId: "pkg_12", remaining: 8, validFrom: null },
+    { name: "佐藤 次郎（チケットなし）",   email: "jiro@dev.local",   pkgId: null,     remaining: 0, validFrom: null },
   ];
 
   for (const s of devStudents) {
@@ -93,10 +104,9 @@ async function main() {
         const expiresAt = s.validFrom
           ? (() => { const d = new Date(s.validFrom); d.setMonth(d.getMonth() + pkg.validMonths); return d; })()
           : null;
-        const ticketId = `devtix_${user.id}`;
         await prisma.userTicket.create({
           data: {
-            id: ticketId,
+            id:             `devtix_${s.email.replace(/@.*/, "")}`,
             userId:         user.id,
             packageId:      s.pkgId,
             remainingCount: s.remaining,
@@ -108,57 +118,69 @@ async function main() {
         });
       }
     }
-    const courseLabel = COURSES.find(c => s.pkgId?.includes(c.courseId))?.courseName ?? "";
-    console.log(`  ✓ Student: ${s.name} (${s.pkgId ? `${courseLabel} 残り${s.remaining}回` : "チケットなし"})`);
+    console.log(`  ✓ Student: ${s.name} (${s.pkgId ? `残り${s.remaining}回` : "チケットなし"})`);
   }
 
   // ── 予約可能スロット（今日から14日分） ──────────────────────────────────────
   console.log("Clearing old OPEN slots...");
   await prisma.slot.deleteMany({ where: { status: "OPEN" } });
 
-  console.log("Seeding OPEN slots (14 days × 10:00-21:00 JST, 30-min grid)...");
-  const JST_OFFSET = 9 * 60 * 60_000; // UTC+9
+  console.log("Seeding OPEN slots (14 days × 10:00-21:00 JST, 30-min grid, ONLINE+OFFLINE)...");
+  const JST_OFFSET = 9 * 60 * 60_000;
   const now = new Date();
-  // Today in JST
   const todayJst = new Date(now.getTime() + JST_OFFSET);
   todayJst.setUTCHours(0, 0, 0, 0);
 
-  type SlotInput = {
+  const slotData: {
     courseId: string; startAt: Date; displayEndAt: Date; blockEndAt: Date;
-    displayDuration: number; blockDuration: number; mode: string; status: string;
-  };
-  const slotData: SlotInput[] = [];
+    displayDuration: number; blockDuration: number; mode: LessonMode; status: SlotStatus;
+  }[] = [];
 
   for (let day = 0; day < 14; day++) {
     const dayJst = new Date(todayJst.getTime() + day * 86_400_000);
-    const y = dayJst.getUTCFullYear();
+    const y  = dayJst.getUTCFullYear();
     const mo = dayJst.getUTCMonth();
-    const d = dayJst.getUTCDate();
+    const d  = dayJst.getUTCDate();
 
-    // 10:00 JST = 01:00 UTC, last start 20:00 JST = 11:00 UTC (blockEnd 21:00 JST = 12:00 UTC)
+    // 10:00〜20:30 JST（最終 blockEnd = 21:30 → 20:00 まで）
     for (let h = 10; h <= 20; h++) {
       for (const min of [0, 30]) {
-        if (h === 20 && min === 30) continue; // 20:30 blockEnd 21:30 > 21:00
+        if (h === 20 && min === 30) continue; // blockEnd が 21:30 になるため除外
         const startAt      = new Date(Date.UTC(y, mo, d, h - 9, min, 0));
         const displayEndAt = new Date(startAt.getTime() + 50 * 60_000);
-        const blockEndAt   = new Date(startAt.getTime() + 60 * 60_000);
+        const blockEndAt   = new Date(startAt.getTime() + 70 * 60_000); // 正規: 70分占有
         slotData.push({
           courseId:        "REGULAR",
           startAt,
           displayEndAt,
           blockEndAt,
           displayDuration: 50,
-          blockDuration:   60,
-          mode:            "BOTH",
-          status:          "OPEN",
+          blockDuration:   70,
+          mode:            LessonMode.BOTH,
+          status:          SlotStatus.OPEN,
         });
       }
     }
   }
 
   await prisma.slot.createMany({ data: slotData });
-  console.log(`  ✓ Created ${slotData.length} OPEN slots`);
+  console.log(`  ✓ Created ${slotData.length} OPEN slots (BOTH mode)`);
 
+  // ── 最終確認 ──────────────────────────────────────────────────────────────────
+  const [courseCount, pkgCount, studentCount, ticketCount, slotCount] = await Promise.all([
+    prisma.course.count(),
+    prisma.ticketPackage.count(),
+    prisma.user.count(),
+    prisma.userTicket.count(),
+    prisma.slot.count({ where: { status: "OPEN" } }),
+  ]);
+
+  console.log("\n=== Seed summary ===");
+  console.log(`  コース:       ${courseCount}`);
+  console.log(`  チケット商品: ${pkgCount}`);
+  console.log(`  学生:         ${studentCount}`);
+  console.log(`  チケット:     ${ticketCount}`);
+  console.log(`  スロット:     ${slotCount}`);
   console.log("Done.");
 }
 

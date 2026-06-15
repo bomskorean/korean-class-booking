@@ -30,13 +30,16 @@ export async function fulfillPayment(
 ): Promise<FulfillmentResult> {
   const pkg = await prisma.ticketPackage.findUniqueOrThrow({ where: { id: packageId } });
 
+  // MOCK is a dev-only alias; store as OFFLINE in the DB
+  const dbMethod = method === "MOCK" ? "OFFLINE" : method;
+
   const { payment, ticket } = await prisma.$transaction(async (tx) => {
     const payment = await tx.payment.create({
       data: {
         userId,
         packageId,
         amount,
-        method,
+        method: dbMethod,
         status: "PAID",
         paidAt: new Date(),
         ...(meta.stripePaymentIntentId
