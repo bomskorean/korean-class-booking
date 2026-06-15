@@ -112,6 +112,53 @@ async function main() {
     console.log(`  ✓ Student: ${s.name} (${s.pkgId ? `${courseLabel} 残り${s.remaining}回` : "チケットなし"})`);
   }
 
+  // ── 予約可能スロット（今日から14日分） ──────────────────────────────────────
+  console.log("Clearing old OPEN slots...");
+  await prisma.slot.deleteMany({ where: { status: "OPEN" } });
+
+  console.log("Seeding OPEN slots (14 days × 10:00-21:00 JST, 30-min grid)...");
+  const JST_OFFSET = 9 * 60 * 60_000; // UTC+9
+  const now = new Date();
+  // Today in JST
+  const todayJst = new Date(now.getTime() + JST_OFFSET);
+  todayJst.setUTCHours(0, 0, 0, 0);
+
+  type SlotInput = {
+    courseId: string; startAt: Date; displayEndAt: Date; blockEndAt: Date;
+    displayDuration: number; blockDuration: number; mode: string; status: string;
+  };
+  const slotData: SlotInput[] = [];
+
+  for (let day = 0; day < 14; day++) {
+    const dayJst = new Date(todayJst.getTime() + day * 86_400_000);
+    const y = dayJst.getUTCFullYear();
+    const mo = dayJst.getUTCMonth();
+    const d = dayJst.getUTCDate();
+
+    // 10:00 JST = 01:00 UTC, last start 20:00 JST = 11:00 UTC (blockEnd 21:00 JST = 12:00 UTC)
+    for (let h = 10; h <= 20; h++) {
+      for (const min of [0, 30]) {
+        if (h === 20 && min === 30) continue; // 20:30 blockEnd 21:30 > 21:00
+        const startAt      = new Date(Date.UTC(y, mo, d, h - 9, min, 0));
+        const displayEndAt = new Date(startAt.getTime() + 50 * 60_000);
+        const blockEndAt   = new Date(startAt.getTime() + 60 * 60_000);
+        slotData.push({
+          courseId:        "REGULAR",
+          startAt,
+          displayEndAt,
+          blockEndAt,
+          displayDuration: 50,
+          blockDuration:   60,
+          mode:            "BOTH",
+          status:          "OPEN",
+        });
+      }
+    }
+  }
+
+  await prisma.slot.createMany({ data: slotData });
+  console.log(`  ✓ Created ${slotData.length} OPEN slots`);
+
   console.log("Done.");
 }
 

@@ -2,9 +2,9 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { generateSlots, LessonKind, Busy } from "@/lib/slots";
+import { overlapsAny, RULES, LessonKind, Busy } from "@/lib/slots";
 
-const OPEN_HOUR_JST = 10;
+const OPEN_HOUR_JST  = 10;
 const CLOSE_HOUR_JST = 21;
 
 export async function GET(req: NextRequest) {
@@ -17,20 +17,27 @@ export async function GET(req: NextRequest) {
   }
 
   const [y, m, d] = dateStr.split("-").map(Number);
-  // JST(UTC+9) → UTC: subtract 9 hours
-  const dayStart = new Date(Date.UTC(y, m - 1, d, OPEN_HOUR_JST - 9, 0, 0));
-  const dayEnd = new Date(Date.UTC(y, m - 1, d, CLOSE_HOUR_JST - 9, 0, 0));
+  const dayStart = new Date(Date.UTC(y, m - 1, d, OPEN_HOUR_JST  - 9, 0, 0));
+  const dayEnd   = new Date(Date.UTC(y, m - 1, d, CLOSE_HOUR_JST - 9, 0, 0));
 
-  // Existing confirmed bookings in DB → busy
-  const [bookedSlots, closedSlots] = await Promise.all([
+  // OPEN slots for the day from DB
+  const [openSlots, busySlots, closedSlots] = await Promise.all([
+    prisma.slot.findMany({
+      where: {
+        startAt: { gte: dayStart, lt: dayEnd },
+        status: "OPEN",
+      },
+      orderBy: { startAt: "asc" },
+    }),
+    // Already booked
     prisma.slot.findMany({
       where: {
         startAt: { lt: dayEnd },
         blockEndAt: { gt: dayStart },
-        bookings: { some: { status: { notIn: ["CANCELLED"] } } },
+        status: "FULL",
       },
     }),
-    // Admin-blocked slots
+    // Admin-blocked
     prisma.slot.findMany({
       where: {
         startAt: { lt: dayEnd },
@@ -40,8 +47,8 @@ export async function GET(req: NextRequest) {
     }),
   ]);
 
-  const busy: Busy[] = [
-    ...bookedSlots.map((s) => ({ start: s.startAt, end: s.blockEndAt })),
+  const busyIntervals: Busy[] = [
+    ...busySlots.map((s) => ({ start: s.startAt, end: s.blockEndAt })),
     ...closedSlots.map((s) => ({ start: s.startAt, end: s.blockEndAt })),
   ];
 
@@ -49,18 +56,22 @@ export async function GET(req: NextRequest) {
   try {
     const { getBusy } = await import("@/lib/calendar");
     const gcalBusy = await getBusy(dayStart, dayEnd);
-    busy.push(...gcalBusy);
+    busyIntervals.push(...gcalBusy);
   } catch {
-    // not configured in dev
+    // not configured
   }
 
-  const slots = generateSlots(dayStart, dayEnd, kind, busy);
+  const blockMin = RULES[kind].block;
 
-  return NextResponse.json({
-    slots: slots.map((s) => ({
-      startAt: s.start.toISOString(),
-      displayEndAt: s.displayEnd.toISOString(),
-      available: s.available,
-    })),
+  const slots = openSlots.map((s) => {
+    const blockEnd = new Date(s.startAt.getTime() + blockMin * 60_000);
+    const available = !overlapsAny({ start: s.startAt, end: blockEnd }, busyIntervals);
+    return {
+      startAt:      s.startAt.toISOString(),
+      displayEndAt: s.displayEndAt.toISOString(),
+      available,
+    };
   });
+
+  return NextResponse.json({ slots });
 }

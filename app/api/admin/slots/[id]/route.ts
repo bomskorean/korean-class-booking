@@ -8,7 +8,7 @@ export async function DELETE(
   { params }: { params: { id: string } },
 ) {
   const slot = await prisma.slot.findUnique({ where: { id: params.id } });
-  if (!slot || slot.status !== "CLOSED") {
+  if (!slot || slot.status !== "OPEN") {
     return NextResponse.json({ error: "not found" }, { status: 404 });
   }
   await prisma.slot.delete({ where: { id: params.id } });

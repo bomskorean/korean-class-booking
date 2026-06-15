@@ -9,7 +9,7 @@ interface Booking {
   id: string; type: string; status: string; createdAt: string;
   user: BookingUser; slot: BookingSlot | null;
 }
-interface ClosedSlot { id: string; startAt: string; blockEndAt: string }
+interface OpenSlot { id: string; startAt: string; displayEndAt: string; mode: string }
 interface Student { id: string; name: string; email: string }
 interface Package { id: string; name: string; totalCount: number; price: number; validMonths: number }
 type Tab = "bookings" | "slots" | "tickets";
@@ -165,14 +165,16 @@ function BookingsTab() {
 }
 
 // ─── Tab 2: 時間帯管理 ────────────────────────────────────────────────────────
+const MODE_LABELS: Record<string, string> = { ONLINE: "オンライン", OFFLINE: "対面", BOTH: "どちらでも" };
+
 function SlotsTab() {
-  const [slots, setSlots]     = useState<ClosedSlot[]>([]);
+  const [slots, setSlots]     = useState<OpenSlot[]>([]);
   const [loading, setLoading] = useState(true);
   const [date, setDate]           = useState("");
   const [startTime, setStartTime] = useState("10:00");
-  const [endTime, setEndTime]     = useState("11:00");
+  const [mode, setMode]           = useState("BOTH");
   const [adding, setAdding]       = useState(false);
-  const [addMsg, setAddMsg]       = useState("");
+  const [addMsg, setAddMsg]       = useState<{ ok: boolean; text: string } | null>(null);
 
   const load = useCallback(() => {
     setLoading(true);
@@ -184,23 +186,28 @@ function SlotsTab() {
 
   useEffect(() => { load(); }, [load]);
 
-  async function addBlock() {
+  async function addSlot() {
     if (!date) return;
     setAdding(true);
-    setAddMsg("");
+    setAddMsg(null);
     const res = await fetch("/api/admin/slots", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ date, startTime, endTime }),
+      body: JSON.stringify({ date, startTime, mode }),
     });
     const data = await res.json();
-    if (!res.ok) { setAddMsg(data.error ?? "エラーが発生しました"); }
-    else { setAddMsg("ブロックを追加しました"); setDate(""); load(); }
+    if (!res.ok) {
+      setAddMsg({ ok: false, text: data.error ?? "エラーが発生しました" });
+    } else {
+      setAddMsg({ ok: true, text: `${fmtDate(data.slot.startAt)} ${fmtTime(data.slot.startAt)} の予約枠を追加しました` });
+      setDate("");
+      load();
+    }
     setAdding(false);
   }
 
   async function remove(id: string) {
-    if (!confirm("このブロックを削除しますか？")) return;
+    if (!confirm("この予約枠を削除しますか？")) return;
     await fetch(`/api/admin/slots/${id}`, { method: "DELETE" });
     load();
   }
@@ -208,14 +215,14 @@ function SlotsTab() {
   return (
     <div>
       <p style={{ fontSize: 14, color: C.sub, marginBottom: 24, lineHeight: 1.7 }}>
-        特定の日時をブロックすると、生徒側でその時間帯が<strong>予約不可</strong>になります。
-        お休みや外出がある日に設定してください。
+        生徒が予約できる<strong>予約可能枠</strong>を追加します。
+        追加した枠が学生の予約画面に表示されます（表示は50分）。
       </p>
 
       {/* Add form */}
       <div style={{ ...S.card(20), marginBottom: 32 }}>
         <h3 style={{ fontSize: 15, fontWeight: 700, color: C.text, margin: "0 0 18px" }}>
-          時間帯をブロック
+          予約枠を追加
         </h3>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "flex-end" }}>
           <div>
@@ -224,37 +231,44 @@ function SlotsTab() {
               style={{ ...S.input(), width: 180 }} />
           </div>
           <div>
-            <label style={S.label()}>開始（JST）</label>
+            <label style={S.label()}>開始時刻（JST）</label>
             <input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)}
               style={{ ...S.input(), width: 130 }} />
           </div>
           <div>
-            <label style={S.label()}>終了（JST）</label>
-            <input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)}
-              style={{ ...S.input(), width: 130 }} />
+            <label style={S.label()}>形式</label>
+            <select value={mode} onChange={(e) => setMode(e.target.value)} style={{ ...S.input(), width: 150 }}>
+              <option value="BOTH">どちらでも</option>
+              <option value="ONLINE">オンライン</option>
+              <option value="OFFLINE">対面</option>
+            </select>
           </div>
-          <button onClick={addBlock} disabled={adding || !date} style={{
+          <button onClick={addSlot} disabled={adding || !date} style={{
             padding: "11px 20px", borderRadius: 10, fontSize: 14, fontWeight: 700,
-            background: !date || adding ? "#D4D4D4" : C.red, color: "#FFFFFF",
+            background: !date || adding ? "#D4D4D4" : C.yellow, color: C.text,
             border: "none", cursor: !date || adding ? "not-allowed" : "pointer",
             whiteSpace: "nowrap",
           }}>
-            {adding ? "追加中..." : "ブロック追加"}
+            {adding ? "追加中..." : "予約枠を追加"}
           </button>
         </div>
-        {addMsg && <p style={{ marginTop: 12, fontSize: 13, color: C.green, fontWeight: 600 }}>{addMsg}</p>}
+        {addMsg && (
+          <p style={{ marginTop: 12, fontSize: 13, fontWeight: 600, color: addMsg.ok ? C.green : C.red }}>
+            {addMsg.text}
+          </p>
+        )}
       </div>
 
       {/* List */}
       <h3 style={{ fontSize: 15, fontWeight: 700, color: C.text, margin: "0 0 14px" }}>
-        現在のブロック一覧
+        予約可能枠一覧
       </h3>
       {loading ? (
         <p style={{ color: C.muted }}>読み込み中...</p>
       ) : slots.length === 0 ? (
         <div style={{ textAlign: "center", padding: "32px 0", color: C.muted }}>
-          <div style={{ fontSize: 32, marginBottom: 8 }}>✅</div>
-          <p style={{ fontSize: 14 }}>ブロックされた時間帯はありません。</p>
+          <div style={{ fontSize: 32, marginBottom: 8 }}>📅</div>
+          <p style={{ fontSize: 14 }}>予約可能枠がありません。上のフォームから追加してください。</p>
         </div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -266,7 +280,13 @@ function SlotsTab() {
               <div>
                 <span style={{ fontWeight: 700, fontSize: 14, color: C.text }}>{fmtDate(s.startAt)}</span>
                 <span style={{ color: C.sub, fontSize: 13, marginLeft: 14 }}>
-                  {fmtTime(s.startAt)} 〜 {fmtTime(s.blockEndAt)}
+                  {fmtTime(s.startAt)} 〜 {fmtTime(s.displayEndAt)}
+                </span>
+                <span style={{
+                  marginLeft: 10, fontSize: 11, fontWeight: 600, padding: "2px 7px",
+                  borderRadius: 4, background: C.yellowLight, color: "#8B6F00",
+                }}>
+                  {MODE_LABELS[s.mode] ?? s.mode}
                 </span>
               </div>
               <button onClick={() => remove(s.id)} style={{
