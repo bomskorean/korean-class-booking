@@ -5,7 +5,7 @@ import { C, S } from "@/lib/design";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 interface User    { id: string; name: string; email: string }
-interface Package { name: string; validMonths: number; unitPrice: number }
+interface Package { name: string; validMonths: number; unitPrice: number; courseScope: string | null }
 interface Ticket  { id: string; remainingCount: number; validFrom: string | null; expiresAt: string | null; package: Package }
 interface Slot    { startAt: string; displayEndAt: string; available: boolean }
 interface Result  { bookingId: string; startAt: string; remainingAfter: number }
@@ -89,7 +89,11 @@ export default function RegularPage() {
       const res = await fetch("/api/regular", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ startAt: selectedStart, ticketId: selectedTicket.id }),
+        body: JSON.stringify({
+          startAt:  selectedStart,
+          ticketId: selectedTicket.id,
+          courseId: selectedTicket.package.courseScope ?? undefined,
+        }),
       });
       const data = await res.json();
       if (!res.ok) { setSubmitError(data.message ?? "エラーが発生しました。"); return; }
@@ -182,8 +186,8 @@ export default function RegularPage() {
                       {t.remainingCount}<span style={{ fontSize: 13, fontWeight: 400, marginLeft: 2, color: C.sub }}>回残り</span>
                     </span>
                   </div>
-                  <div style={{ fontSize: 12, color: C.muted, marginTop: 4 }}>
-                    有効期限：{t.expiresAt ? `${toShortDate(t.expiresAt)}まで` : "初回レッスン日より起算"}
+                  <div style={{ fontSize: 12, color: C.muted, marginTop: 4, display: "flex", gap: 12 }}>
+                    <span>有効期限：{t.expiresAt ? `${toShortDate(t.expiresAt)}まで` : "初回レッスン日より起算"}</span>
                   </div>
                 </button>
               );

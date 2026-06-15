@@ -9,7 +9,7 @@ export async function GET(req: NextRequest) {
 
   const tickets = await prisma.userTicket.findMany({
     where: { userId, status: "ACTIVE", remainingCount: { gt: 0 } },
-    include: { package: { select: { name: true, validMonths: true, unitPrice: true } } },
+    include: { package: { select: { name: true, validMonths: true, unitPrice: true, courseScope: true } } },
     orderBy: { createdAt: "asc" },
   });
 

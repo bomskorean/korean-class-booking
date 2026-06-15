@@ -8,6 +8,7 @@ import { occupancyFor, overlapsAny } from "@/lib/slots";
 const Body = z.object({
   startAt:  z.string().datetime(),
   ticketId: z.string(),
+  courseId: z.string().optional(),
 });
 
 export async function POST(req: NextRequest) {
@@ -17,7 +18,7 @@ export async function POST(req: NextRequest) {
   const parsed = Body.safeParse(await req.json());
   if (!parsed.success) return NextResponse.json({ error: "invalid_input" }, { status: 400 });
 
-  const { startAt: startAtStr, ticketId } = parsed.data;
+  const { startAt: startAtStr, ticketId, courseId } = parsed.data;
   const startAt = new Date(startAtStr);
   const occ = occupancyFor(startAt, "regular"); // block = 70分
 
@@ -32,6 +33,16 @@ export async function POST(req: NextRequest) {
   if (ticket.expiresAt && ticket.expiresAt < new Date()) {
     return NextResponse.json({ error: "ticket_expired", message: "チケットの有効期限が切れています。" }, { status: 409 });
   }
+
+  // コース照合：購入時のコースと異なるチケットは使用不可
+  if (courseId && ticket.package.courseScope && ticket.package.courseScope !== courseId) {
+    return NextResponse.json({
+      error: "course_mismatch",
+      message: `このチケットは「${ticket.package.name}」用です。別のコースのチケットはご利用いただけません。`,
+    }, { status: 409 });
+  }
+
+  const slotCourseId = ticket.package.courseScope ?? "REGULAR";
 
   // スロット空き確認
   const conflicting = await prisma.slot.findFirst({
@@ -63,7 +74,7 @@ export async function POST(req: NextRequest) {
 
     const slot = await tx.slot.create({
       data: {
-        courseId: "REGULAR",
+        courseId: slotCourseId,
         startAt,
         displayEndAt: displayEnd,
         blockEndAt:   blockEnd,

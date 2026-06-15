@@ -1,4 +1,4 @@
-import { PACKAGES } from "@/lib/pricing";
+import { TICKET_TIERS } from "@/lib/pricing";
 import { C } from "@/lib/design";
 
 const COURSES = [
@@ -99,35 +99,31 @@ export default function Home() {
 
       {/* ── Ticket Pricing ────────────────────────────────────────── */}
       <section>
-        <SectionHeading>チケット料金（税込）</SectionHeading>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
-          {PACKAGES.map((p) => {
-            const popular = p.count === 4;
-            const great   = p.count >= 8;
+        <SectionHeading>チケット料金（税込・全コース共通）</SectionHeading>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 14 }}>
+          {TICKET_TIERS.map((t) => {
+            const popular = t.count === 4;
+            const great   = t.count >= 8;
             return (
-              <div key={p.name} style={{
-                flex: "1 1 130px",
+              <div key={t.count} style={{
+                flex: "1 1 160px",
                 background: popular ? C.yellowLight : C.card,
                 border: `1.5px solid ${popular ? C.yellow : C.border}`,
-                borderRadius: 14,
-                padding: "16px 14px",
+                borderRadius: 16,
+                padding: "20px 18px",
                 position: "relative",
                 boxShadow: popular ? "0 4px 16px rgba(245,193,0,0.2)" : "0 2px 8px rgba(0,0,0,0.04)",
               }}>
-                {popular && (
-                  <div style={priceBadgeS("#F5C100", C.text)}>おすすめ</div>
-                )}
-                {great && !popular && (
-                  <div style={priceBadgeS(C.text, "#FFFFFF")}>お得</div>
-                )}
-                <div style={{ fontWeight: 800, fontSize: 16, color: C.text, marginBottom: 4 }}>
-                  {p.name}
+                {popular && <div style={priceBadgeS("#F5C100", C.text)}>おすすめ</div>}
+                {great && !popular && <div style={priceBadgeS(C.text, "#FFFFFF")}>お得</div>}
+                <div style={{ fontWeight: 800, fontSize: 20, color: C.text, marginBottom: 6 }}>
+                  {t.count}回券
                 </div>
-                <div style={{ fontWeight: 700, fontSize: 18, color: popular ? "#8B6F00" : C.text }}>
-                  ¥{p.price.toLocaleString()}
+                <div style={{ fontWeight: 700, fontSize: 22, color: popular ? "#8B6F00" : C.text }}>
+                  ¥{t.price.toLocaleString()}
                 </div>
-                <div style={{ fontSize: 12, color: C.muted, marginTop: 4 }}>
-                  1回 ¥{p.unitPrice.toLocaleString()} ／ {p.validMonths}か月
+                <div style={{ fontSize: 13, color: C.muted, marginTop: 6 }}>
+                  1回 ¥{t.unitPrice.toLocaleString()} ／ {t.validMonths}か月
                 </div>
               </div>
             );
