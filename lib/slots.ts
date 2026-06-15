@@ -34,11 +34,10 @@ export function generateSlots(
   const { display, block, gridMin } = RULES[kind];
   const slots: Slot[] = [];
 
-  // グリッド開始時刻に正規化（trial=正時、regular=:00/:30）
+  // グリッド開始時刻に正規化（:00 or :30）
   const cursor = new Date(dayStart);
   cursor.setSeconds(0, 0);
-  if (gridMin === 60) cursor.setMinutes(0);
-  else cursor.setMinutes(cursor.getMinutes() < 30 ? 0 : 30);
+  cursor.setMinutes(cursor.getMinutes() < 30 ? 0 : 30);
 
   while (cursor < dayEnd) {
     const start = new Date(cursor);

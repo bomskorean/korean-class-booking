@@ -16,7 +16,7 @@ export async function createCheckout(params: {
 }) {
   return stripe.checkout.sessions.create({
     mode: "payment",
-    payment_method_types: ["card", "paypay"],
+    payment_method_types: ["card", "paypay"] as Stripe.Checkout.SessionCreateParams.PaymentMethodType[],
     line_items: [{
       quantity: 1,
       price_data: {
