@@ -144,6 +144,34 @@ export default function Home() {
           </a>
         </p>
       </section>
+
+      {/* ── LINE ──────────────────────────────────────────────────── */}
+      <section style={{
+        background: "#F0FBF4", border: "1.5px solid #06C755",
+        borderRadius: 20, padding: "32px 24px",
+        marginTop: 48, textAlign: "center",
+      }}>
+        <p style={{ fontSize: 15, color: "#1a5c2a", fontWeight: 700, margin: "0 0 6px" }}>
+          LINEで予約確認・お知らせを受け取る
+        </p>
+        <p style={{ fontSize: 13, color: "#2d7a45", margin: "0 0 20px", lineHeight: 1.6 }}>
+          予約リマインド・お知らせをLINEでお届けします。
+        </p>
+        <a href="https://lin.ee/voKCX1e" target="_blank" rel="noopener noreferrer" style={{
+          display: "inline-flex", alignItems: "center", gap: 10,
+          background: "#06C755", color: "#FFFFFF",
+          fontWeight: 800, fontSize: 17,
+          padding: "15px 32px", borderRadius: 14,
+          textDecoration: "none",
+          boxShadow: "0 4px 18px rgba(6,199,85,0.4)",
+        }}>
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M12 2C6.48 2 2 6.02 2 11c0 3.54 2.29 6.61 5.6 8.27-.08.59-.3 1.87-.34 2.16-.06.38.14.37.29.27.12-.08 1.88-1.28 2.64-1.8.58.08 1.18.12 1.81.12 5.52 0 10-4.02 10-9S17.52 2 12 2z" fill="white"/>
+            <path d="M8 13H6.5V9.5H8V13zm4.75 0h-1.5l-2-3.5V13H7.75V9.5h1.5l2 3.5V9.5h1.5V13zm1.75 0h-1.5V9.5h1.5V13zm3.5 0h-3.5V9.5h1.5v2h2V13z" fill="#06C755"/>
+          </svg>
+          LINE 友だち追加
+        </a>
+      </section>
     </main>
   );
 }

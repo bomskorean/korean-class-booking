@@ -1,14 +1,11 @@
-// 馬賑韓国語教室 予約システム — データモデル (SQLite 開発版)
-// SQLite は enum・Json 非対応のため String に統一。
-// 本番(PostgreSQL)移行時は provider を "postgresql" に戻し、
-// String の enum フィールドを enum 型に置き換える。
+// 馬賑韓国語教室 予約システム — データモデル (PostgreSQL / Neon)
 
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 

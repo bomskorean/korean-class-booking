@@ -1,5 +1,5 @@
 // 予約スロット生成ロジック（PRD 3.7）
-// 無料体験：表示50分 / 占有60分(50+休憩10) / 開始は正時(60分グリッド)
+// 無料体験：表示50分 / 占有60分(50+休憩10) / 開始は30分グリッド
 // 正規   ：表示50分 / 占有70分(1h10m)      / 開始は30分グリッド
 // Googleカレンダーの busy 区間と重なるスロットは自動ブロック。
 
@@ -14,7 +14,7 @@ export interface Slot {
 }
 
 export const RULES = {
-  trial:   { display: 50, block: 60, gridMin: 60 },
+  trial:   { display: 50, block: 60, gridMin: 30 },
   regular: { display: 50, block: 70, gridMin: 30 },
 } as const;
 
